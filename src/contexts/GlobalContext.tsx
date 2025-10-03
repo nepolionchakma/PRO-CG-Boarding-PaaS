@@ -6,6 +6,7 @@ interface GlobalContex {
   handleHydrate: () => Promise<void>;
   hydrated: boolean;
   // setHydrated: (value: boolean) => void;
+  userColorScheme: string;
 }
 const GlobalContex = createContext({} as GlobalContex);
 export function useGlobalContext() {
@@ -13,6 +14,7 @@ export function useGlobalContext() {
 }
 export function GlobalContextProvider({children}: GlobalContextProviderProps) {
   const [hydrated, setHydrated] = useState(false);
+  const userColorScheme = 'auto';
 
   const handleHydrate = async () => {
     try {
@@ -36,6 +38,7 @@ export function GlobalContextProvider({children}: GlobalContextProviderProps) {
     hydrated,
     handleHydrate,
     //setHydrated
+    userColorScheme,
   };
   return (
     <GlobalContex.Provider value={value}>{children}</GlobalContex.Provider>

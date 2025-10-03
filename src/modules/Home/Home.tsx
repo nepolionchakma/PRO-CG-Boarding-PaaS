@@ -1,11 +1,12 @@
-import {SafeAreaView, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text} from 'react-native';
 import React from 'react';
+import ContainerNew from '../../common/components/ContainerNew';
 
 const Home = () => {
   return (
-    <SafeAreaView>
+    <ContainerNew>
       <Text>Home</Text>
-    </SafeAreaView>
+    </ContainerNew>
   );
 };
 
