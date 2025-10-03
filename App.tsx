@@ -5,9 +5,10 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import BottomTabs from './src/navigations/BottomTabs';
 import RootStack from './src/navigations/RootStack';
-
-const App = () => {
+import {GlobalContextProvider} from './src/contexts/GlobalContext';
+const Main = () => {
   const isLogin = true;
+
   return (
     <GestureHandlerRootView>
       <SafeAreaProvider>
@@ -21,6 +22,13 @@ const App = () => {
         </NavigationContainer>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+};
+const App = () => {
+  return (
+    <GlobalContextProvider>
+      <Main />
+    </GlobalContextProvider>
   );
 };
 
