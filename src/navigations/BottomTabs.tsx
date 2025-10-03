@@ -1,8 +1,7 @@
 import React from 'react';
 import Home from '../modules/Home/Home';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/FontAwesome';
-// import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const {Navigator, Screen} = createBottomTabNavigator();
 
@@ -14,6 +13,8 @@ const BottomTabs = () => {
         component={Home}
         options={{
           tabBarLabel: 'Home',
+          tabBarLabelStyle: {display: 'none'},
+          // tabBarIconStyle: {backgroundColor: 'red'},
           tabBarIcon: () => <Icon name="home" size={24} color="black" />,
         }}
       />

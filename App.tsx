@@ -4,8 +4,10 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import BottomTabs from './src/navigations/BottomTabs';
+import RootStack from './src/navigations/RootStack';
 
 const App = () => {
+  const isLogin = true;
   return (
     <GestureHandlerRootView>
       <SafeAreaProvider>
@@ -15,7 +17,7 @@ const App = () => {
           translucent={Platform.OS === 'ios'}
         />
         <NavigationContainer>
-          <BottomTabs />
+          {isLogin ? <BottomTabs /> : <RootStack />}
         </NavigationContainer>
       </SafeAreaProvider>
     </GestureHandlerRootView>
