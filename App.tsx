@@ -16,7 +16,6 @@ import {
 } from '@react-navigation/native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import BottomTabs from './src/navigations/BottomTabs';
 import RootStack from './src/navigations/RootStack';
 import {
   GlobalContextProvider,
@@ -45,12 +44,12 @@ if ((TextInput as any).defaultProps == null) {
 const linking: LinkingOptions<any> = {
   prefixes: [
     /* your linking prefixes */
-    'procgboardingpass://',
-    'https://procg.viscorp.app',
+    'PROCG://',
+    'https://procg.datafluent.team',
   ],
   config: {
     /* configuration for matching screens with paths */
-    initialRouteName: 'Loader',
+    // initialRouteName: 'Loader',
     screens: {
       // Loader: {
       //   path: 'loader/:delay?/:text?',
@@ -63,8 +62,12 @@ const linking: LinkingOptions<any> = {
       //     text: text => encodeURIComponent(text),
       //   },
       // },
-      Home: '',
-      Register: 'invitaion',
+      Registration: 'invitation/:user_invitation_id/:token',
+      BottomTabs: {
+        screens: {
+          Home: '',
+        },
+      },
     },
   },
 };
@@ -144,7 +147,6 @@ axios.interceptors.response.use(
 );
 
 const Main = () => {
-  const isLogin = true;
   const {handleHydrate} = useGlobalContext();
   const [isDark] = useIsDarkTheme();
 
@@ -177,7 +179,7 @@ const Main = () => {
           translucent={Platform.OS === 'ios'}
         />
         <NavigationContainer linking={linking} theme={theme} onReady={onReady}>
-          {isLogin ? <BottomTabs /> : <RootStack />}
+          <RootStack />
         </NavigationContainer>
       </SafeAreaProvider>
     </GestureHandlerRootView>
