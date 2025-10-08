@@ -30,7 +30,7 @@ const Loader: FC<LoaderProps> = ({navigation}) => {
         const match = url.match(/invitation\/(\d+)\/([^/]+)/);
 
         if (match) {
-          const [, user_invitation_id, token] = match;
+          const [user_invitation_id, token] = match;
           // console.log('Extracted params:', {user_invitation_id, token});
           setDeepLinkData({url, user_invitation_id, token});
         } else {
