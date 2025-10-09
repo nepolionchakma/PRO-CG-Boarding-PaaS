@@ -1,7 +1,81 @@
 //@ts-nocheck
-import axios from 'axios';
-import {makeEncryption} from './encryption';
+import axios, {AxiosResponse, AxiosError} from 'axios';
+import {makeDecryption, makeEncryption} from './encryption';
 import {withoutEncryptionApi} from '../api/withoutEncrytApi';
+
+// Encryption process
+axios.interceptors.request.use(
+  async config => {
+    let url = config?.url;
+    if (withoutEncryptionApi.some(element => url?.includes(element))) {
+      return config;
+    }
+    let copyOfConfig = {...config};
+    const apiPrefixes = url?.includes('?');
+    if (apiPrefixes) {
+      let splitUrl = url?.split('?');
+      const encryptedData = await makeEncryption(splitUrl?.[1]);
+      url = `${splitUrl?.[0]}?${encryptedData}`;
+      copyOfConfig = {...config, url};
+    }
+    let payload = null;
+    if (config?.data) {
+      payload = await makeEncryption(JSON.stringify(config?.data));
+    }
+
+    copyOfConfig = {
+      ...copyOfConfig,
+      data: payload,
+      headers: {
+        ...copyOfConfig.headers,
+        'Content-Type': 'application/json',
+      },
+    };
+
+    return copyOfConfig;
+  },
+  async error => {
+    // console.log('error', JSON.stringify(error, null, 2));
+    let decryptedData = await makeDecryption(error?.response?.data);
+    let newError = {response: {data: decryptedData || ''}};
+    return Promise.reject(newError);
+  },
+);
+
+axios.interceptors.response.use(
+  async (response: AxiosResponse) => {
+    if (
+      withoutEncryptionApi.some(element =>
+        response?.config?.url?.includes(element),
+      )
+    ) {
+      return response;
+    }
+    let decryptedData = makeDecryption(response?.data);
+    return {
+      ...response,
+      data: decryptedData,
+    };
+  },
+
+  async (error: AxiosError) => {
+    if (error?.response?.status === 401) {
+      return Promise.reject({response: {data: 401}});
+    } else if (error?.response?.status === 406) {
+      return Promise.reject({response: {data: 406}});
+    } else {
+      let decryptedError = makeDecryption(error?.response?.data);
+      let modifiedError = {response: {data: decryptedError || ''}};
+      if (
+        modifiedError?.response?.data?.message ===
+        'No authenticationScheme was specified, and there was no DefaultChallengeScheme found. The default schemes can be set using either AddAuthentication(string defaultScheme) or AddAuthentication(Action<AuthenticationOptions> configureOptions).'
+      ) {
+      } else {
+        return Promise.reject(modifiedError);
+      }
+    }
+  },
+);
 
 export const httpRequest = async (params: any, cb: any) => {
   const cofigParam = configuration(params);
@@ -84,15 +158,17 @@ export const httpRequest = async (params: any, cb: any) => {
       return response;
     }
   } catch (error) {
-    cb(false);
-    params?.isConsole &&
-      console.log('error_response ==>', JSON.stringify(error, null, 2));
-    // params?.isConsole &&
-    //   console.log(
-    //     'error_response_data ==>',
-    //     JSON.stringify(error?.data, null, 2),
-    //   );
-    return error?.response?.data;
+    if (error instanceof AxiosError) {
+      cb(false);
+      params?.isConsole &&
+        console.log('error_response ==>', JSON.stringify(error, null, 2));
+      // params?.isConsole &&
+      //   console.log(
+      //     'error_response_data ==>',
+      //     JSON.stringify(error?.data, null, 2),
+      //   );
+      return error?.response?.data;
+    }
   }
 };
 
