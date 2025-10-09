@@ -1,21 +1,44 @@
-import {FC, useEffect} from 'react';
-import {Image, Platform, StyleSheet, View} from 'react-native';
+import React, {FC, useEffect, useState} from 'react';
+import {Image, Linking, Platform, StyleSheet, View} from 'react-native';
 import {COLORS, IMAGES, SIZES} from '../common/constant/Index';
 import delay from '../common/services/delay';
 import {RootStackParamList} from '../types/Navigations/NavigationTypes';
 import BootSplash from 'react-native-bootsplash';
-// import {useRootStore} from '../stores/rootStore';
-// import axios from 'axios';
-// import {ProcgURL} from '../../App';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useGlobalContext} from '../contexts/GlobalContext';
 
-interface RegisterScreenProps {
+interface LoaderProps {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Loader'>;
   route: any;
 }
-const Loader: FC<RegisterScreenProps> = ({navigation}) => {
+
+const Loader: FC<LoaderProps> = ({navigation}) => {
   const {handleHydrate, hydrated} = useGlobalContext();
+  const [deepLinkData, setDeepLinkData] = useState<{
+    url: string;
+    user_invitation_id?: string | undefined;
+    token?: string | undefined;
+  } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const url = await Linking.getInitialURL();
+      if (url) {
+        // console.log('App opened via deep link:', url);
+
+        // Match URLs like: https://procg.datafluent.team/invitation/10/<token>
+        const match = url.match(/invitation\/(\d+)\/([^/]+)/);
+
+        if (match) {
+          const [user_invitation_id, token] = match;
+          // console.log('Extracted params:', {user_invitation_id, token});
+          setDeepLinkData({url, user_invitation_id, token});
+        } else {
+          setDeepLinkData({url});
+        }
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -37,17 +60,21 @@ const Loader: FC<RegisterScreenProps> = ({navigation}) => {
   useEffect(() => {
     if (hydrated) {
       delay(1000).then(() => {
-        // if (userInfo?.access_token) {
-        // axios.defaults.baseURL = `${ProcgURL}`;
-        // axios.defaults.headers.common.Authorization = `Bearer ${userInfo?.access_token}`;
-        navigation.replace('Home');
-        // }
-        // else {
-        //   navigation.replace('Login');
-        // }
+        if (deepLinkData?.url?.includes('invitation')) {
+          // console.log('Navigating to Register with params:', deepLinkData);
+          navigation.replace('Registration', {
+            user_invitation_id: deepLinkData.user_invitation_id,
+            token: deepLinkData.token,
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{name: 'BottomTabs'}],
+          });
+        }
       });
     }
-  }, [hydrated, navigation]);
+  }, [hydrated, deepLinkData, navigation]);
 
   return (
     <View style={styles.center}>

@@ -1,3 +1,4 @@
+import React from 'react';
 import {createContext, ReactNode, useContext, useEffect, useState} from 'react';
 interface GlobalContextProviderProps {
   children: ReactNode;

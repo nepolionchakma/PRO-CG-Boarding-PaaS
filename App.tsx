@@ -1,5 +1,5 @@
-import axios from 'axios';
 import React from 'react';
+import {flaskURL, nodeURL, secretKeyy, secureStorageKeyy} from '@env';
 import {
   Linking,
   LogBox,
@@ -16,7 +16,6 @@ import {
 } from '@react-navigation/native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import BottomTabs from './src/navigations/BottomTabs';
 import RootStack from './src/navigations/RootStack';
 import {
   GlobalContextProvider,
@@ -24,9 +23,12 @@ import {
 } from './src/contexts/GlobalContext';
 import {useCallback, useMemo} from 'react';
 import delay from './src/common/services/delay';
-import {makeDecryption, makeEncryption} from './src/common/constant/encryption';
-import {withoutEncryptionApi} from './src/common/api/withoutEncrytApi';
 import useIsDarkTheme from './src/hooks/useIsDarkTheme';
+import {ToastProvider} from './src/common/components/CustomToast';
+import {PaperProvider} from 'react-native-paper';
+import axios, {AxiosError, AxiosResponse} from 'axios';
+import {withoutEncryptionApi} from './src/common/api/withoutEncrytApi';
+import {makeDecryption, makeEncryption} from './src/common/constant/encryption';
 
 LogBox.ignoreLogs(['EventEmitter.removeListener', 'ViewPropTypes']);
 if ((Text as any).defaultProps == null) {
@@ -38,19 +40,20 @@ if ((TextInput as any).defaultProps == null) {
   (TextInput as any).defaultProps = {};
   (TextInput as any).defaultProps.allowFontScaling = false;
 }
-// export const ProcgURL = procgURLL;
-// export const secretKey = secretKeyy;
-// export const secureStorageKey = secureStorageKeyy;
+export const BaseURL = nodeURL;
+export const FlaskURL = flaskURL;
+export const secretKey = secretKeyy;
+export const secureStorageKey = secureStorageKeyy;
 
 const linking: LinkingOptions<any> = {
   prefixes: [
     /* your linking prefixes */
-    'procgboardingpass://',
-    'https://procg.viscorp.app',
+    'PROCG://',
+    'https://procg.datafluent.team',
   ],
   config: {
     /* configuration for matching screens with paths */
-    initialRouteName: 'Loader',
+    // initialRouteName: 'Loader',
     screens: {
       // Loader: {
       //   path: 'loader/:delay?/:text?',
@@ -63,15 +66,19 @@ const linking: LinkingOptions<any> = {
       //     text: text => encodeURIComponent(text),
       //   },
       // },
-      Home: '',
-      Register: 'invitaion',
+      Registration: 'invitation/:user_invitation_id/:token',
+      BottomTabs: {
+        screens: {
+          Home: '',
+        },
+      },
     },
   },
 };
 
 // Encryption process
 axios.interceptors.request.use(
-  async (config: any) => {
+  async config => {
     let url = config?.url;
     if (withoutEncryptionApi.some(element => url?.includes(element))) {
       return config;
@@ -109,7 +116,7 @@ axios.interceptors.request.use(
 );
 
 axios.interceptors.response.use(
-  async (response: any) => {
+  async (response: AxiosResponse) => {
     if (
       withoutEncryptionApi.some(element =>
         response?.config?.url?.includes(element),
@@ -119,12 +126,12 @@ axios.interceptors.response.use(
     }
     let decryptedData = makeDecryption(response?.data);
     return {
-      status: response?.status,
+      ...response,
       data: decryptedData,
     };
   },
 
-  async error => {
+  async (error: AxiosError) => {
     if (error?.response?.status === 401) {
       return Promise.reject({response: {data: 401}});
     } else if (error?.response?.status === 406) {
@@ -144,7 +151,6 @@ axios.interceptors.response.use(
 );
 
 const Main = () => {
-  const isLogin = true;
   const {handleHydrate} = useGlobalContext();
   const [isDark] = useIsDarkTheme();
 
@@ -176,9 +182,16 @@ const Main = () => {
           // barStyle={isDarkMode ? 'light-content' : 'dark-content'}
           translucent={Platform.OS === 'ios'}
         />
-        <NavigationContainer linking={linking} theme={theme} onReady={onReady}>
-          {isLogin ? <BottomTabs /> : <RootStack />}
-        </NavigationContainer>
+        <PaperProvider>
+          <ToastProvider>
+            <NavigationContainer
+              linking={linking}
+              theme={theme}
+              onReady={onReady}>
+              <RootStack />
+            </NavigationContainer>
+          </ToastProvider>
+        </PaperProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

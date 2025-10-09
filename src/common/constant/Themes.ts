@@ -62,7 +62,7 @@ export const COLORS = {
   textGray: '#6F7D8A',
   textColor: '#7F7F7F',
   softGray: '#dcdcf2',
-  lightPrimary: '#CCF0CC',
+  lightPrimary3: '#CCF0CC',
   lightPrimary2: '#E4F8DD',
   mixBlack: '#3B4964',
   modalUnderBgColor: '#121E4499',
