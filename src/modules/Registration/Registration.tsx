@@ -19,6 +19,8 @@ import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {useToast} from '../../common/components/CustomToast';
 import {api} from '../../common/api/api';
+import SelectDropsdown from '../../common/components/SelectDropsdown';
+import jobTitle from './Job-Titles.json';
 
 interface PayloadType {
   user_name: string;
@@ -37,6 +39,7 @@ const Registration = () => {
   const [isValidInvitation, setIsValidInvitation] = useState(null);
   const [message, setMessage] = useState('');
   const [tenants, setTenants] = useState([]);
+  const [status, setStatus] = useState('');
   const navigation = useNavigation<any>();
   const toaster = useToast();
 
@@ -75,9 +78,19 @@ const Registration = () => {
           // isConsoleParams: true,
         };
         const res = await httpRequest(params, setIsLoading);
+        console.log(res, 'res tokenVerify');
         setIsValidInvitation(res.valid);
         setMessage(res.message);
-        console.log(res, 'res');
+        setStatus(res.status);
+        const params2 = {
+          url: api.Tenants,
+          baseURL: FlaskURL,
+          access_token: token,
+          // isConsole: true,
+          // isConsoleParams: true,
+        };
+        const res2 = await httpRequest(params2, () => {});
+        setTenants(res2);
       } catch (error) {
         console.log('error', error);
       }
@@ -85,29 +98,12 @@ const Registration = () => {
 
     tokenVerify();
   }, [user_invitation_id, token]);
-  useEffect(() => {
-    (async () => {
-      if (!isValidInvitation) {
-        return;
-      }
-      const params = {
-        url: api.Tenants,
-        baseURL: BaseURL,
-        access_token: token,
-        // isConsole: true,
-        // isConsoleParams: true,
-      };
-      const res = await httpRequest(params, () => {});
-      setTenants(res);
-      console.log(res, 'tenants');
-    })();
-  }, [isValidInvitation, token]);
 
   const userSchema = z
     .object({
       user_name: z.string().min(3, 'User name must be at least 3 characters'),
       email: z.string().email('Invalid email'),
-      tenant_id: z.string(),
+      tenant_id: z.union([z.string(), z.number()]),
       first_name: z.string().min(3, 'First name must be at least 3 characters'),
       middle_name: z.string().optional(),
       last_name: z.string().optional(),
@@ -120,13 +116,9 @@ const Registration = () => {
       path: ['confirm_password'],
     });
 
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: {errors, isValid, isDirty},
-  } = useForm({
+  const {control, handleSubmit, setValue, reset, watch, formState} = useForm<
+    z.infer<typeof userSchema>
+  >({
     resolver: zodResolver(userSchema),
     defaultValues: {
       user_name: '',
@@ -151,8 +143,8 @@ const Registration = () => {
       ],
     });
   };
-  // console.log({errors, isDirty, isValid}, 'errr');
-  const onSubmit = async (data: PayloadType) => {
+  const onSubmit = async (data: PayloadType, e: any) => {
+    e.preventDefault();
     // if (!isValid) {
     //   toaster.show({message: 'Please correct the errors', type: 'error'});
     //   return;
@@ -175,22 +167,21 @@ const Registration = () => {
         baseURL: FlaskURL,
         access_token: token,
         data: postData,
-        isEncrypted: true,
+        // isEncrypted: true,
         method: 'POST',
         // isConsole: true,
         // isConsoleParams: true,
       };
 
       const res = await httpRequest(params, setIsLoading);
-      toaster.show({message: 'Success', type: 'success'});
-
-      console.log(res, 'res registraction');
+      toaster.show({message: res.message, type: 'success'});
 
       // console.log(data);
     } catch (error) {
       console.log(error, 'errors');
     }
   };
+
   return (
     <ContainerNew
       edges={['top', 'left', 'right']}
@@ -235,7 +226,14 @@ const Registration = () => {
           {!isValidInvitation ? (
             <View
               style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-              <Text>{message ?? 'Invalid Token'}</Text>
+              {/* <Text>{message ?? 'Invalid Token'}</Text> */}
+              {status === 'EXPIRED' ? (
+                <Text>Invitation has expired</Text>
+              ) : status === 'ACCEPTED' ? (
+                <View>
+                  <Text>Invitation has already been accepted</Text>
+                </View>
+              ) : null}
             </View>
           ) : (
             <View style={{gap: 15, marginTop: 10}}>
@@ -246,18 +244,23 @@ const Registration = () => {
                 label="User Name"
                 rules={{required: true}}
               />
+              <SelectDropsdown
+                name="tenant_id"
+                label="Select a Tenant"
+                data={tenants}
+                setSelectedValue={setValue}
+              />
+              <SelectDropsdown
+                name="job_title"
+                label="Select a Job Title"
+                data={jobTitle}
+                setSelectedValue={setValue}
+              />
               <CustomInputNew
                 setValue={setValue}
                 control={control}
                 name="email"
                 label="Enter your email"
-                rules={{required: true}}
-              />
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
-                name="tenant_id"
-                label="Tenant ID"
                 rules={{required: true}}
               />
               <CustomInputNew
@@ -284,13 +287,6 @@ const Registration = () => {
               <CustomInputNew
                 setValue={setValue}
                 control={control}
-                name="job_title"
-                label="Job Title"
-                rules={{required: true}}
-              />
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
                 name="password"
                 label="Password"
                 rules={{required: true}}
@@ -302,7 +298,7 @@ const Registration = () => {
                 label="Confirm Password"
                 rules={{required: true}}
               />
-              <Text>{errors.confirm_password?.message}</Text>
+              <Text>{formState.errors.confirm_password?.message}</Text>
               {/* <Button title="Submit" onPress={handleSubmit(onSubmit)} /> */}
             </View>
           )}

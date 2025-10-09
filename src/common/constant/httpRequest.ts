@@ -73,7 +73,7 @@ export const httpRequest = async (params: any, cb: any) => {
       console.log('api_params/payload ==>', JSON.stringify(config, null, 2));
 
     const response = await axios(config);
-    console.log(response, 'response-----');
+
     cb(false);
     params?.isConsole &&
       console.log('api_response ==>', JSON.stringify(response?.data, null, 2));
@@ -84,7 +84,6 @@ export const httpRequest = async (params: any, cb: any) => {
       return response;
     }
   } catch (error) {
-    console.log(error, 'error');
     cb(false);
     params?.isConsole &&
       console.log('error_response ==>', JSON.stringify(error, null, 2));
