@@ -5,6 +5,7 @@ import {
   StyleSheet,
   BackHandler,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import {useRoute, useNavigation} from '@react-navigation/native';
 import {BaseURL, FlaskURL} from '../../../App';
@@ -13,19 +14,21 @@ import CustomInputNew from '../../common/components/CustomInput';
 import ContainerNew from '../../common/components/ContainerNew';
 import CustomButtonNew from '../../common/components/CustomButton';
 import {COLORS} from '../../common/constant/Themes';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as z from 'zod';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {useToast} from '../../common/components/CustomToast';
 import {api} from '../../common/api/api';
 import SelectDropsdown from '../../common/components/SelectDropsdown';
+import {decrypt} from '../../common/constant/decryptToken';
 import jobTitle from './Job-Titles.json';
+// import LottieView from 'lottie-react-native';
 
 interface PayloadType {
   user_name: string;
   email: string;
-  tenant_id: string;
+  tenant_id: string | number;
   first_name: string;
   middle_name?: string;
   last_name?: string;
@@ -37,11 +40,16 @@ const Registration = () => {
   const {user_invitation_id, token} = route.params || {};
   const [isLoading, setIsLoading] = useState(false);
   const [isValidInvitation, setIsValidInvitation] = useState(null);
-  const [message, setMessage] = useState('');
   const [tenants, setTenants] = useState([]);
   const [status, setStatus] = useState('');
+  const [showPass1, setShowPass1] = useState(true);
+  const [showPass2, setShowPass2] = useState(true);
+  const [createdUserId, setCreatedUserId] = useState<number | null>(null);
   const navigation = useNavigation<any>();
   const toaster = useToast();
+
+  const id = decrypt(user_invitation_id);
+  const tok = decrypt(token);
 
   useEffect(() => {
     const backAction = () => {
@@ -64,28 +72,27 @@ const Registration = () => {
   }, [navigation]);
 
   useEffect(() => {
-    if (!user_invitation_id || !token) {
+    if (!id || !tok) {
       return;
     }
 
     const tokenVerify = async () => {
       try {
         const params = {
-          url: `${api.VerifyInvitation}?user_invitation_id=${user_invitation_id}&token=${token}`,
+          url: `${api.VerifyInvitation}?user_invitation_id=${id}&token=${tok}`,
           baseURL: BaseURL,
-          access_token: token,
+          access_token: tok,
           // isConsole: true,
           // isConsoleParams: true,
         };
         const res = await httpRequest(params, setIsLoading);
-        console.log(res, 'res tokenVerify');
+
         setIsValidInvitation(res.valid);
-        setMessage(res.message);
         setStatus(res.status);
         const params2 = {
           url: api.Tenants,
           baseURL: FlaskURL,
-          access_token: token,
+          access_token: tok,
           // isConsole: true,
           // isConsoleParams: true,
         };
@@ -97,7 +104,7 @@ const Registration = () => {
     };
 
     tokenVerify();
-  }, [user_invitation_id, token]);
+  }, [id, tok, createdUserId]);
 
   const userSchema = z
     .object({
@@ -116,7 +123,7 @@ const Registration = () => {
       path: ['confirm_password'],
     });
 
-  const {control, handleSubmit, setValue, reset, watch, formState} = useForm<
+  const {control, handleSubmit, setValue, formState} = useForm<
     z.infer<typeof userSchema>
   >({
     resolver: zodResolver(userSchema),
@@ -160,12 +167,12 @@ const Registration = () => {
         last_name: data.last_name,
         job_title: data.job_title,
         password: data.password,
-        user_invitation_id,
+        user_invitation_id: id,
       };
       const params = {
         url: api.Users,
         baseURL: FlaskURL,
-        access_token: token,
+        access_token: tok,
         data: postData,
         // isEncrypted: true,
         method: 'POST',
@@ -174,10 +181,14 @@ const Registration = () => {
       };
 
       const res = await httpRequest(params, setIsLoading);
-      toaster.show({message: res.message, type: 'success'});
+      if (res.user_id) {
+        setCreatedUserId(res.user_id);
+        toaster.show({message: res.message, type: 'success'});
+      }
 
       // console.log(data);
     } catch (error) {
+      setCreatedUserId(null);
       console.log(error, 'errors');
     }
   };
@@ -189,23 +200,14 @@ const Registration = () => {
       // backgroundColor={COLORS.lightBackground}
       isScrollView={true}
       header={
-        <View
-          style={{
-            paddingVertical: 10,
-            paddingHorizontal: 20,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-          }}>
-          <Icon name="arrow-back" size={24} onPress={handleGoBack} />
-          <Text style={{fontSize: 16, fontWeight: '500'}}>
-            User Registration
-          </Text>
+        <View style={styles.headerStyle}>
+          <Icon name="arrow-left" size={24} onPress={handleGoBack} />
+          <Text style={styles.headerText}>User Registration</Text>
         </View>
       }
       footer={
         !isValidInvitation ? null : (
-          <View style={{paddingBottom: 10, paddingHorizontal: 20}}>
+          <View style={styles.footerStyle}>
             <CustomButtonNew
               disabled={isLoading}
               btnText="Register"
@@ -219,13 +221,18 @@ const Registration = () => {
         )
       }
       style={styles.container}>
+      {/* <LottieView
+        source={require('../../assets/animations/Dashboard.json')}
+        style={{width: '10%', height: '100%'}}
+        autoPlay
+        loop
+      /> */}
       {isLoading ? (
         <ActivityIndicator size="large" color={COLORS.darkBlue} />
       ) : (
         <>
           {!isValidInvitation ? (
-            <View
-              style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+            <View style={styles.isValidInvitationDiv}>
               {/* <Text>{message ?? 'Invalid Token'}</Text> */}
               {status === 'EXPIRED' ? (
                 <Text>Invitation has expired</Text>
@@ -287,16 +294,36 @@ const Registration = () => {
               <CustomInputNew
                 setValue={setValue}
                 control={control}
+                secureTextEntry={showPass1}
                 name="password"
                 label="Password"
                 rules={{required: true}}
+                rightIcon={() => (
+                  <TouchableOpacity onPress={() => setShowPass1(!showPass1)}>
+                    <Icon
+                      name={showPass1 ? 'eye-off' : 'eye'}
+                      color={COLORS.iconColor}
+                      size={22}
+                    />
+                  </TouchableOpacity>
+                )}
               />
               <CustomInputNew
                 setValue={setValue}
                 control={control}
+                secureTextEntry={showPass2}
                 name="confirm_password"
                 label="Confirm Password"
                 rules={{required: true}}
+                rightIcon={() => (
+                  <TouchableOpacity onPress={() => setShowPass2(!showPass2)}>
+                    <Icon
+                      name={showPass2 ? 'eye-off' : 'eye'}
+                      color={COLORS.iconColor}
+                      size={22}
+                    />
+                  </TouchableOpacity>
+                )}
               />
               <Text>{formState.errors.confirm_password?.message}</Text>
               {/* <Button title="Submit" onPress={handleSubmit(onSubmit)} /> */}
@@ -317,6 +344,11 @@ const styles = StyleSheet.create({
     // justifyContent: 'center',
     // alignItems: 'center',
   },
+  isValidInvitationDiv: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   text: {
     fontSize: 16,
     marginVertical: 8,
@@ -332,4 +364,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     alignSelf: 'center',
   },
+  headerStyle: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  footerStyle: {paddingBottom: 10, paddingHorizontal: 20},
 });

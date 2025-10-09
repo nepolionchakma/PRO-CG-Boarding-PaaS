@@ -41,7 +41,7 @@ const SelectDropsdown = ({
             )} */}
             <Text style={styles.dropdownButtonTxtStyle}>
               {(selectedItem && selectedItem.name) ||
-                (selectedItem && selectedItem.tenant_id) ||
+                (selectedItem && selectedItem.tenant_name) ||
                 label}
             </Text>
             <Icon
@@ -60,7 +60,7 @@ const SelectDropsdown = ({
             }}>
             {/* <Icon name={item.icon} style={styles.dropdownItemIconStyle} /> */}
             <Text style={styles.dropdownItemTxtStyle}>
-              {item.name || item.tenant_id}
+              {item.name || item.tenant_name}
             </Text>
           </View>
         );
