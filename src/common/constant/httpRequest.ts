@@ -1,26 +1,9 @@
 //@ts-nocheck
 import axios from 'axios';
-import {withoutEncryptionApi} from '../api/withoutEncrytApi';
 import {makeEncryption} from './encryption';
+import {withoutEncryptionApi} from '../api/withoutEncrytApi';
 
 export const httpRequest = async (params: any, cb: any) => {
-  // This is the argument of calling httpRequest function
-  // If you call api please check this one
-  // if no loading callback function, 2nd parameter will be empty arrow func () => {}
-  // const params = {
-  //   url: params?.url, // required field, string type
-  //   data: params?.data, // optional, ***this will be object type
-  //   method: params?.method, // optional, string type
-  //   baseURL: params?.baseURL, // optional, string type
-  //   isConsole: true, // optional, boolean type,
-  //   mediaFile: params?.mediaFile, // optional, object type,
-  //   isParamsAndmediaFile: true, // optional, boolean type,
-  //   isEncrypted: true, // optional, boolean type,
-  //   isPostOrPutWithParams: true, // optional, boolean type,
-  //   isBaseURLAndURLSame: true, // optional, boolean type,
-  //   isConsoleParams: true, // optional, boolean type,
-  //   referer:params?.referer, // optional, string type,
-  // };
   const cofigParam = configuration(params);
 
   const defualt_baseURL = axios.defaults.baseURL;
@@ -31,7 +14,7 @@ export const httpRequest = async (params: any, cb: any) => {
       : params?.baseURL || defualt_baseURL,
     headers: {
       ...axios.defaults.headers,
-
+      Authorization: `Bearer ${params?.access_token}`,
       'Content-Type': params?.mediaFile
         ? 'multipart/form-data'
         : axios.defaults.headers['Content-Type'],
@@ -50,7 +33,7 @@ export const httpRequest = async (params: any, cb: any) => {
         name: params?.mediaFile?.fileName || params?.mediaFile?.name,
         type: params?.mediaFile?.type,
       };
-      formData?.append('files', file);
+      formData?.append('profileImage', file);
 
       if (params?.mediaFile && params?.isParamsAndmediaFile) {
         config.url = cofigParam?.url;
@@ -66,7 +49,6 @@ export const httpRequest = async (params: any, cb: any) => {
         config.url = cofigParam?.url;
         config.data = cofigParam?.data;
         const encrypt = await makeEncryption(JSON.stringify(cofigParam?.data));
-        const defualt_baseURL = axios.defaults.baseURL;
         params?.isEncrypted &&
           console.log(
             `Encypted_Payload for==> ${
@@ -91,6 +73,7 @@ export const httpRequest = async (params: any, cb: any) => {
       console.log('api_params/payload ==>', JSON.stringify(config, null, 2));
 
     const response = await axios(config);
+    console.log(response, 'response-----');
     cb(false);
     params?.isConsole &&
       console.log('api_response ==>', JSON.stringify(response?.data, null, 2));
@@ -101,6 +84,7 @@ export const httpRequest = async (params: any, cb: any) => {
       return response;
     }
   } catch (error) {
+    console.log(error, 'error');
     cb(false);
     params?.isConsole &&
       console.log('error_response ==>', JSON.stringify(error, null, 2));
@@ -131,12 +115,11 @@ const apiParamsProcess = async (params: any, config: any) => {
   } else {
     if (params?.isEncrypted) {
       const encrypt = await makeEncryption(`${modifiedParam?.slice(0, -1)}`);
-      const defualt_baseURL = axios.defaults.baseURL;
       console.log(
         `Encypted_Params for==> ${
           params?.isBaseURLAndURLSame
             ? params?.url
-            : params?.baseURL || defualt_baseURL
+            : params?.baseURL || axios.defaults.baseURL
         }${params?.url}?${encrypt}`,
       );
     }
@@ -155,16 +138,10 @@ const configuration = (param: any) => {
       data: param?.data,
       method: param?.method,
     };
-  } else if (param?.url && param?.data) {
-    return {
-      url: param?.url,
-      data: param?.data,
-      method: 'get',
-    };
   } else {
     return {
       url: param?.url,
-      method: 'get',
+      method: param?.method || 'get',
     };
   }
 };

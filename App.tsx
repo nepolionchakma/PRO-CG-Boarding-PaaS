@@ -1,5 +1,5 @@
-import axios from 'axios';
 import React from 'react';
+import {flaskURL, nodeURL, secretKeyy, secureStorageKeyy} from '@env';
 import {
   Linking,
   LogBox,
@@ -23,9 +23,12 @@ import {
 } from './src/contexts/GlobalContext';
 import {useCallback, useMemo} from 'react';
 import delay from './src/common/services/delay';
-import {makeDecryption, makeEncryption} from './src/common/constant/encryption';
-import {withoutEncryptionApi} from './src/common/api/withoutEncrytApi';
 import useIsDarkTheme from './src/hooks/useIsDarkTheme';
+import {ToastProvider} from './src/common/components/CustomToast';
+import {PaperProvider} from 'react-native-paper';
+import axios, {AxiosError, AxiosResponse} from 'axios';
+import {withoutEncryptionApi} from './src/common/api/withoutEncrytApi';
+import {makeDecryption, makeEncryption} from './src/common/constant/encryption';
 
 LogBox.ignoreLogs(['EventEmitter.removeListener', 'ViewPropTypes']);
 if ((Text as any).defaultProps == null) {
@@ -37,9 +40,10 @@ if ((TextInput as any).defaultProps == null) {
   (TextInput as any).defaultProps = {};
   (TextInput as any).defaultProps.allowFontScaling = false;
 }
-// export const ProcgURL = procgURLL;
-// export const secretKey = secretKeyy;
-// export const secureStorageKey = secureStorageKeyy;
+export const BaseURL = nodeURL;
+export const FlaskURL = flaskURL;
+export const secretKey = secretKeyy;
+export const secureStorageKey = secureStorageKeyy;
 
 const linking: LinkingOptions<any> = {
   prefixes: [
@@ -74,7 +78,7 @@ const linking: LinkingOptions<any> = {
 
 // Encryption process
 axios.interceptors.request.use(
-  async (config: any) => {
+  async config => {
     let url = config?.url;
     if (withoutEncryptionApi.some(element => url?.includes(element))) {
       return config;
@@ -112,7 +116,7 @@ axios.interceptors.request.use(
 );
 
 axios.interceptors.response.use(
-  async (response: any) => {
+  async (response: AxiosResponse) => {
     if (
       withoutEncryptionApi.some(element =>
         response?.config?.url?.includes(element),
@@ -122,12 +126,12 @@ axios.interceptors.response.use(
     }
     let decryptedData = makeDecryption(response?.data);
     return {
-      status: response?.status,
+      ...response,
       data: decryptedData,
     };
   },
 
-  async error => {
+  async (error: AxiosError) => {
     if (error?.response?.status === 401) {
       return Promise.reject({response: {data: 401}});
     } else if (error?.response?.status === 406) {
@@ -178,9 +182,16 @@ const Main = () => {
           // barStyle={isDarkMode ? 'light-content' : 'dark-content'}
           translucent={Platform.OS === 'ios'}
         />
-        <NavigationContainer linking={linking} theme={theme} onReady={onReady}>
-          <RootStack />
-        </NavigationContainer>
+        <PaperProvider>
+          <ToastProvider>
+            <NavigationContainer
+              linking={linking}
+              theme={theme}
+              onReady={onReady}>
+              <RootStack />
+            </NavigationContainer>
+          </ToastProvider>
+        </PaperProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

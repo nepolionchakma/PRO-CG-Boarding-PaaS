@@ -1,6 +1,6 @@
 {
   "extends": "@react-native/typescript-config/tsconfig.json",
-  "include": ["./src","native.config.js"],
+  "include": ["./src","native.config.js",".env.d.ts"],
   "compilerOptions": {
     "jsx":"react",
     "strict": true,

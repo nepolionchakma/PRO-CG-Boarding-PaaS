@@ -1,4 +1,5 @@
 import {secretKey} from '../../../App';
+
 const CryptoJS = require('crypto-js');
 const key = CryptoJS.enc.Utf8.parse(secretKey);
 const iv = CryptoJS.enc.Utf8.parse(secretKey);
