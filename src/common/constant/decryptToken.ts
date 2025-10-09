@@ -1,15 +1,15 @@
 import CryptoJS from 'crypto-js';
-const CRYPTO_SECRET_KEY = '6z4n';
-const crptoSecretKey = CRYPTO_SECRET_KEY;
+import {cryptoTokenKey} from '../../../App';
+
 export const decrypt = (value: string) => {
   try {
     // Decode URL-safe string
     const decoded = decodeURIComponent(value);
 
-    const bytes = CryptoJS.AES.decrypt(decoded, crptoSecretKey);
+    const bytes = CryptoJS.AES.decrypt(decoded, cryptoTokenKey);
     const plaintext = bytes.toString(CryptoJS.enc.Utf8);
 
-    return plaintext; // original string
+    return plaintext;
   } catch (error) {
     console.error('Decryption failed:', error);
     return null;

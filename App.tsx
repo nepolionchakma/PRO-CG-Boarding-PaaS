@@ -1,5 +1,11 @@
 import React from 'react';
-import {flaskURL, nodeURL, secretKeyy, secureStorageKeyy} from '@env';
+import {
+  flaskURL,
+  nodeURL,
+  secretKeyy,
+  secureStorageKeyy,
+  cryptoTokenKeyy,
+} from '@env';
 import {
   Linking,
   LogBox,
@@ -44,6 +50,7 @@ export const BaseURL = nodeURL;
 export const FlaskURL = flaskURL;
 export const secretKey = secretKeyy;
 export const secureStorageKey = secureStorageKeyy;
+export const cryptoTokenKey = cryptoTokenKeyy;
 
 const linking: LinkingOptions<any> = {
   prefixes: [
@@ -75,80 +82,6 @@ const linking: LinkingOptions<any> = {
     },
   },
 };
-
-// Encryption process
-axios.interceptors.request.use(
-  async config => {
-    let url = config?.url;
-    if (withoutEncryptionApi.some(element => url?.includes(element))) {
-      return config;
-    }
-    let copyOfConfig = {...config};
-    const apiPrefixes = url?.includes('?');
-    if (apiPrefixes) {
-      let splitUrl = url?.split('?');
-      const encryptedData = await makeEncryption(splitUrl?.[1]);
-      url = `${splitUrl?.[0]}?${encryptedData}`;
-      copyOfConfig = {...config, url};
-    }
-    let payload = null;
-    if (config?.data) {
-      payload = await makeEncryption(JSON.stringify(config?.data));
-    }
-
-    copyOfConfig = {
-      ...copyOfConfig,
-      data: payload,
-      headers: {
-        ...copyOfConfig.headers,
-        'Content-Type': 'application/json',
-      },
-    };
-
-    return copyOfConfig;
-  },
-  async error => {
-    // console.log('error', JSON.stringify(error, null, 2));
-    let decryptedData = await makeDecryption(error?.response?.data);
-    let newError = {response: {data: decryptedData || ''}};
-    return Promise.reject(newError);
-  },
-);
-
-axios.interceptors.response.use(
-  async (response: AxiosResponse) => {
-    if (
-      withoutEncryptionApi.some(element =>
-        response?.config?.url?.includes(element),
-      )
-    ) {
-      return response;
-    }
-    let decryptedData = makeDecryption(response?.data);
-    return {
-      ...response,
-      data: decryptedData,
-    };
-  },
-
-  async (error: AxiosError) => {
-    if (error?.response?.status === 401) {
-      return Promise.reject({response: {data: 401}});
-    } else if (error?.response?.status === 406) {
-      return Promise.reject({response: {data: 406}});
-    } else {
-      let decryptedError = makeDecryption(error?.response?.data);
-      let modifiedError = {response: {data: decryptedError || ''}};
-      if (
-        modifiedError?.response?.data?.message ===
-        'No authenticationScheme was specified, and there was no DefaultChallengeScheme found. The default schemes can be set using either AddAuthentication(string defaultScheme) or AddAuthentication(Action<AuthenticationOptions> configureOptions).'
-      ) {
-      } else {
-        return Promise.reject(modifiedError);
-      }
-    }
-  },
-);
 
 const Main = () => {
   const {handleHydrate} = useGlobalContext();
