@@ -32,9 +32,6 @@ import delay from './src/common/services/delay';
 import useIsDarkTheme from './src/hooks/useIsDarkTheme';
 import {ToastProvider} from './src/common/components/CustomToast';
 import {PaperProvider} from 'react-native-paper';
-import axios, {AxiosError, AxiosResponse} from 'axios';
-import {withoutEncryptionApi} from './src/common/api/withoutEncrytApi';
-import {makeDecryption, makeEncryption} from './src/common/constant/encryption';
 
 LogBox.ignoreLogs(['EventEmitter.removeListener', 'ViewPropTypes']);
 if ((Text as any).defaultProps == null) {
