@@ -16,7 +16,7 @@ interface requestParams {
   isBaseURLAndURLSame?: boolean;
   isConsoleParams?: boolean;
   referer?: string;
-  access_token?: string;
+  access_token?: string | null;
 }
 
 // Encryption process

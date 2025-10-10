@@ -23,7 +23,7 @@ import {api} from '../../common/api/api';
 import SelectDropsdown from '../../common/components/SelectDropsdown';
 import {decrypt} from '../../common/constant/decryptToken';
 import jobTitle from './Job-Titles.json';
-// import LottieView from 'lottie-react-native';
+import LottieView from 'lottie-react-native';
 
 interface PayloadType {
   user_name: string;
@@ -86,7 +86,7 @@ const Registration = () => {
           // isConsoleParams: true,
         };
         const res = await httpRequest(params, setIsLoading);
-
+        console.log(res, 'res');
         setIsValidInvitation(res.valid);
         setStatus(res.status);
         const params2 = {
@@ -198,7 +198,7 @@ const Registration = () => {
       edges={['top', 'left', 'right']}
       isRefresh={true}
       // backgroundColor={COLORS.lightBackground}
-      isScrollView={true}
+      isScrollView={isValidInvitation ? true : false}
       header={
         <View style={styles.headerStyle}>
           <Icon name="arrow-left" size={24} onPress={handleGoBack} />
@@ -221,116 +221,143 @@ const Registration = () => {
         )
       }
       style={styles.container}>
-      {/* <LottieView
-        source={require('../../assets/animations/Dashboard.json')}
-        style={{width: '10%', height: '100%'}}
-        autoPlay
-        loop
-      /> */}
-      {isLoading ? (
-        <ActivityIndicator size="large" color={COLORS.darkBlue} />
-      ) : (
-        <>
-          {!isValidInvitation ? (
-            <View style={styles.isValidInvitationDiv}>
-              {/* <Text>{message ?? 'Invalid Token'}</Text> */}
-              {status === 'EXPIRED' ? (
-                <Text>Invitation has expired</Text>
-              ) : status === 'ACCEPTED' ? (
-                <View>
-                  <Text>Invitation has already been accepted</Text>
-                </View>
-              ) : null}
-            </View>
-          ) : (
-            <View style={{gap: 15, marginTop: 10}}>
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
-                name="user_name"
-                label="User Name"
-                rules={{required: true}}
-              />
-              <SelectDropsdown
-                name="tenant_id"
-                label="Select a Tenant"
-                data={tenants}
-                setSelectedValue={setValue}
-              />
-              <SelectDropsdown
-                name="job_title"
-                label="Select a Job Title"
-                data={jobTitle}
-                setSelectedValue={setValue}
-              />
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
-                name="email"
-                label="Enter your email"
-                rules={{required: true}}
-              />
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
-                name="first_name"
-                label="First Name"
-                rules={{required: true}}
-              />
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
-                name="middle_name"
-                label="Middle Name"
-                rules={{required: true}}
-              />
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
-                name="last_name"
-                label="Last Name"
-                rules={{required: true}}
-              />
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
-                secureTextEntry={showPass1}
-                name="password"
-                label="Password"
-                rules={{required: true}}
-                rightIcon={() => (
-                  <TouchableOpacity onPress={() => setShowPass1(!showPass1)}>
-                    <Icon
-                      name={showPass1 ? 'eye-off' : 'eye'}
-                      color={COLORS.iconColor}
-                      size={22}
+      <View>
+        {isLoading ? (
+          <ActivityIndicator size="large" color={COLORS.darkBlue} />
+        ) : (
+          <View>
+            {!isValidInvitation ? (
+              <View style={styles.isValidInvitationDiv}>
+                {status === 'EXPIRED' ? (
+                  <View
+                    style={{
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 15,
+                    }}>
+                    <LottieView
+                      source={require('../../assets/animations/InvitationExpired.json')}
+                      style={{
+                        width: '100%',
+                        height: '50%',
+                      }}
+                      autoPlay
+                      loop
                     />
-                  </TouchableOpacity>
-                )}
-              />
-              <CustomInputNew
-                setValue={setValue}
-                control={control}
-                secureTextEntry={showPass2}
-                name="confirm_password"
-                label="Confirm Password"
-                rules={{required: true}}
-                rightIcon={() => (
-                  <TouchableOpacity onPress={() => setShowPass2(!showPass2)}>
-                    <Icon
-                      name={showPass2 ? 'eye-off' : 'eye'}
-                      color={COLORS.iconColor}
-                      size={22}
+                    <Text>The invitation has expired</Text>
+                  </View>
+                ) : status === 'ACCEPTED' ? (
+                  <View
+                    style={{
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 15,
+                    }}>
+                    <LottieView
+                      source={require('../../assets/animations/Dashboard.json')}
+                      style={{
+                        width: '100%',
+                        height: '50%',
+                      }}
+                      autoPlay
+                      loop
                     />
-                  </TouchableOpacity>
-                )}
-              />
-              <Text>{formState.errors.confirm_password?.message}</Text>
-              {/* <Button title="Submit" onPress={handleSubmit(onSubmit)} /> */}
-            </View>
-          )}
-        </>
-      )}
+                    <Text style={{fontSize: 16, fontWeight: 'bold'}}>
+                      Invitation has already been accepted
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <View style={{gap: 15, marginTop: 10}}>
+                <CustomInputNew
+                  setValue={setValue}
+                  control={control}
+                  name="user_name"
+                  label="User Name"
+                  rules={{required: true}}
+                />
+                <SelectDropsdown
+                  name="tenant_id"
+                  label="Select a Tenant"
+                  data={tenants}
+                  setSelectedValue={setValue}
+                />
+                <SelectDropsdown
+                  name="job_title"
+                  label="Select a Job Title"
+                  data={jobTitle}
+                  setSelectedValue={setValue}
+                />
+                <CustomInputNew
+                  setValue={setValue}
+                  control={control}
+                  name="email"
+                  label="Enter your email"
+                  rules={{required: true}}
+                />
+                <CustomInputNew
+                  setValue={setValue}
+                  control={control}
+                  name="first_name"
+                  label="First Name"
+                  rules={{required: true}}
+                />
+                <CustomInputNew
+                  setValue={setValue}
+                  control={control}
+                  name="middle_name"
+                  label="Middle Name"
+                  rules={{required: true}}
+                />
+                <CustomInputNew
+                  setValue={setValue}
+                  control={control}
+                  name="last_name"
+                  label="Last Name"
+                  rules={{required: true}}
+                />
+                <CustomInputNew
+                  setValue={setValue}
+                  control={control}
+                  secureTextEntry={showPass1}
+                  name="password"
+                  label="Password"
+                  rules={{required: true}}
+                  rightIcon={() => (
+                    <TouchableOpacity onPress={() => setShowPass1(!showPass1)}>
+                      <Icon
+                        name={showPass1 ? 'eye-off' : 'eye'}
+                        color={COLORS.iconColor}
+                        size={22}
+                      />
+                    </TouchableOpacity>
+                  )}
+                />
+                <CustomInputNew
+                  setValue={setValue}
+                  control={control}
+                  secureTextEntry={showPass2}
+                  name="confirm_password"
+                  label="Confirm Password"
+                  rules={{required: true}}
+                  rightIcon={() => (
+                    <TouchableOpacity onPress={() => setShowPass2(!showPass2)}>
+                      <Icon
+                        name={showPass2 ? 'eye-off' : 'eye'}
+                        color={COLORS.iconColor}
+                        size={22}
+                      />
+                    </TouchableOpacity>
+                  )}
+                />
+                <Text>{formState.errors.confirm_password?.message}</Text>
+                {/* <Button title="Submit" onPress={handleSubmit(onSubmit)} /> */}
+              </View>
+            )}
+          </View>
+        )}
+      </View>
     </ContainerNew>
   );
 };
@@ -341,13 +368,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    // justifyContent: 'center',
-    // alignItems: 'center',
   },
   isValidInvitationDiv: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: '100%',
   },
   text: {
     fontSize: 16,
