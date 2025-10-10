@@ -3,6 +3,22 @@ import axios, {AxiosResponse, AxiosError} from 'axios';
 import {makeDecryption, makeEncryption} from './encryption';
 import {withoutEncryptionApi} from '../api/withoutEncrytApi';
 
+interface requestParams {
+  url: string;
+  data?: any;
+  method?: string;
+  baseURL?: string;
+  isConsole?: boolean;
+  mediaFile?: any;
+  isParamsAndmediaFile?: boolean;
+  isEncrypted?: boolean;
+  isPostOrPutWithParams?: boolean;
+  isBaseURLAndURLSame?: boolean;
+  isConsoleParams?: boolean;
+  referer?: string;
+  access_token?: string;
+}
+
 // Encryption process
 axios.interceptors.request.use(
   async config => {
@@ -77,7 +93,7 @@ axios.interceptors.response.use(
   },
 );
 
-export const httpRequest = async (params: any, cb: any) => {
+export const httpRequest = async (params: requestParams, cb: any) => {
   const cofigParam = configuration(params);
 
   const defualt_baseURL = axios.defaults.baseURL;
