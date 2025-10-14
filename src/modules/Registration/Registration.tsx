@@ -38,7 +38,9 @@ const Registration = () => {
   const route = useRoute<any>();
   const {user_invitation_id, token} = route.params || {};
   const [isLoading, setIsLoading] = useState(false);
-  const [isValidInvitation, setIsValidInvitation] = useState(null);
+  const [isValidInvitation, setIsValidInvitation] = useState<boolean | null>(
+    null,
+  );
   const [tenants, setTenants] = useState([]);
   const [status, setStatus] = useState('');
   const [showPass1, setShowPass1] = useState(true);
@@ -83,25 +85,28 @@ const Registration = () => {
         url: `${api.VerifyInvitation}?user_invitation_id=${id}&token=${tok}`,
         baseURL: BaseURL,
         access_token: tok,
+        isEncrypted: true,
         // isConsole: true,
         // isConsoleParams: true,
       };
       const res = await httpRequest(params, setIsLoading);
 
-      if (res?.statusCode === 200) {
-        setIsValidInvitation(res.data?.valid);
-        setStatus(res.data?.status);
+      if (res.success) {
+        setIsValidInvitation(res?.data?.valid);
+        setStatus(res?.data?.status);
         const params2 = {
           url: api.Tenants,
           baseURL: FlaskURL,
           access_token: tok,
+          // isEncrypted: true,
           // isConsole: true,
           // isConsoleParams: true,
         };
         const res2 = await httpRequest(params2, () => {});
-        setTenants(res2.data);
+        setTenants(res2?.data);
       } else {
-        setErrorMessage(res?.data?.message);
+        setErrorMessage(res?.data?.message || '');
+        setIsValidInvitation(res?.success);
       }
     };
 
@@ -115,8 +120,8 @@ const Registration = () => {
       tenant_id: z.union([z.string(), z.number()]),
       first_name: z.string().min(3, 'First name must be at least 3 characters'),
       middle_name: z.string().optional(),
-      last_name: z.string().optional(),
-      job_title: z.string().min(3, 'Job title must be at least 3 characters'),
+      last_name: z.string().min(3, 'Last name must be at least 3 characters'),
+      job_title: z.string(),
       password: z.string().min(8, 'Password must be at least 8 characters'),
       confirm_password: z.string(),
     })
@@ -129,7 +134,7 @@ const Registration = () => {
     control,
     handleSubmit,
     setValue,
-    formState: {errors, isDirty, isValid},
+    formState: {errors},
   } = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
     defaultValues: {
@@ -152,7 +157,7 @@ const Registration = () => {
     name: 'job_title' | 'tenant_id',
     value: string | number,
   ) => {
-    console.log(name, value);
+    // console.log(name, value);
     setValue(name, value);
     if (name === 'tenant_id') {
       setSelectedTenantId(value as number);
@@ -169,46 +174,36 @@ const Registration = () => {
       ],
     });
   };
-  const onSubmit = async (data: PayloadType, e: any) => {
-    e.preventDefault();
-    // if (!isValid) {
-    //   toaster.show({message: 'Please correct the errors', type: 'error'});
-    //   return;
-    // }
-    try {
-      const postData = {
-        user_name: data.user_name,
-        user_type: 'person',
-        email_address: data.email,
-        tenant_id: Number(data.tenant_id),
-        first_name: data.first_name,
-        middle_name: data.middle_name,
-        last_name: data.last_name,
-        job_title: data.job_title,
-        password: data.password,
-        user_invitation_id: id,
-      };
-      const params = {
-        url: api.Users,
-        baseURL: FlaskURL,
-        access_token: tok,
-        data: postData,
-        // isEncrypted: true,
-        method: 'POST',
-        // isConsole: true,
-        // isConsoleParams: true,
-      };
+  const onSubmit = async (data: PayloadType) => {
+    const postData = {
+      user_name: data.user_name,
+      user_type: 'person',
+      email_address: data.email,
+      tenant_id: Number(data.tenant_id),
+      first_name: data.first_name,
+      middle_name: data.middle_name,
+      last_name: data.last_name,
+      job_title: data.job_title,
+      password: data.password,
+      user_invitation_id: id,
+    };
+    const params = {
+      url: api.Users,
+      baseURL: FlaskURL,
+      access_token: tok,
+      data: postData,
+      method: 'POST',
+      // isEncrypted: true,
+      // isConsole: true,
+      // isConsoleParams: true,
+    };
 
-      const res = await httpRequest(params, setIsLoading);
-      if (res.data.user_id) {
-        setCreatedUserId(res.data.user_id);
-        toaster.show({message: res.data.message, type: 'success'});
-      }
-
-      // console.log(data);
-    } catch (error) {
-      setCreatedUserId(null);
-      console.log(error, 'errors');
+    const res = await httpRequest(params, setIsLoading);
+    if (res?.success) {
+      setCreatedUserId(res?.data?.user_id);
+      toaster.show({message: res?.data?.message, type: 'success'});
+    } else {
+      toaster.show({message: res?.data?.message, type: 'error'});
     }
   };
 
@@ -218,18 +213,21 @@ const Registration = () => {
         url: api.JobTitles,
         baseURL: FlaskURL,
         access_token: tok,
+        // isEncrypted: true,
         // isConsole: true,
         // isConsoleParams: true,
       };
       const res = await httpRequest(params, () => {});
-      const jobs = res.data.filter(
-        (i: any) => i.tenant_id === selectedTenantId,
-      );
-      if (jobs.length) {
-        setJobTitles(jobs);
-      } else {
-        setValue('job_title', '');
-        setJobTitles([]);
+      if (res.success) {
+        const jobs = res?.data?.filter(
+          (jb: any) => jb.tenant_id === selectedTenantId,
+        );
+        if (jobs.length) {
+          setJobTitles(jobs);
+        } else {
+          setValue('job_title', '');
+          setJobTitles([]);
+        }
       }
     })();
   }, [selectedTenantId, setValue, tok]);
@@ -252,7 +250,7 @@ const Registration = () => {
         </View>
       }
       footer={
-        !isValidInvitation && isLoading ? null : (
+        !isValidInvitation || isLoading ? null : (
           <View style={styles.footerStyle}>
             <CustomButtonNew
               disabled={isLoading}
