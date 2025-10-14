@@ -93,7 +93,10 @@ axios.interceptors.response.use(
   },
 );
 
-export const httpRequest = async (params: requestParams, cb: any) => {
+export const httpRequest = async (
+  params: requestParams,
+  cb: any,
+): Promise<{data: any; statusCode: number}> => {
   const cofigParam = configuration(params);
 
   const defualt_baseURL = axios.defaults.baseURL;
@@ -167,24 +170,23 @@ export const httpRequest = async (params: requestParams, cb: any) => {
     cb(false);
     params?.isConsole &&
       console.log('api_response ==>', JSON.stringify(response?.data, null, 2));
-
-    if (response?.data === 0 || response?.data) {
-      return response?.data;
+    if (response.data) {
+      return {data: response?.data, statusCode: response?.status};
     } else {
       return response;
     }
   } catch (error) {
-    if (error instanceof AxiosError) {
-      cb(false);
-      params?.isConsole &&
-        console.log('error_response ==>', JSON.stringify(error, null, 2));
-      // params?.isConsole &&
-      //   console.log(
-      //     'error_response_data ==>',
-      //     JSON.stringify(error?.data, null, 2),
-      //   );
-      return error?.response?.data;
+    cb(false);
+    params?.isConsole &&
+      console.log('error_response ==>', JSON.stringify(error, null, 2));
+
+    if (error?.response.data === 401) {
+      return {
+        statusCode: 401,
+        data: {message: 'Unauthorized Access: Token has expired'},
+      };
     }
+    return error;
   }
 };
 

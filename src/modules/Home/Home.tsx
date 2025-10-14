@@ -27,11 +27,17 @@ const Home = () => {
 
   return (
     <ContainerNew>
-      <Text>Home</Text>
+      <Text style={styles.textStyle}>Home</Text>
     </ContainerNew>
   );
 };
 
 export default Home;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  textStyle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+});

@@ -2,22 +2,21 @@ import React, {StyleSheet, Text, View} from 'react-native';
 import SelectDropdown from 'react-native-select-dropdown';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
+interface jobTitleProps {
+  name: string;
+  value: string;
+}
+interface tenantsProps {
+  tenant_name: string;
+  tenant_id: string;
+}
 interface selectProps {
   name: nameType;
   label: string;
-  data: {name: string; value: string}[];
+  data: jobTitleProps[] | tenantsProps[];
   setSelectedValue: (name: nameType, value: string) => void;
 }
-type nameType =
-  | 'user_name'
-  | 'email'
-  | 'tenant_id'
-  | 'first_name'
-  | 'middle_name'
-  | 'last_name'
-  | 'job_title'
-  | 'password'
-  | 'confirm_password';
+type nameType = 'tenant_id' | 'job_title';
 const SelectDropsdown = ({
   name,
   label,
@@ -28,6 +27,7 @@ const SelectDropsdown = ({
     <SelectDropdown
       data={data}
       onSelect={(selectedItem, index) => {
+        // console.log(index, 'index');
         setSelectedValue(name, selectedItem.value || selectedItem.tenant_id);
       }}
       renderButton={(selectedItem, isOpened) => {
@@ -58,10 +58,12 @@ const SelectDropsdown = ({
               ...styles.dropdownItemStyle,
               ...(isSelected && {backgroundColor: '#D2D9DF'}),
             }}>
-            {/* <Icon name={item.icon} style={styles.dropdownItemIconStyle} /> */}
             <Text style={styles.dropdownItemTxtStyle}>
               {item.name || item.tenant_name}
             </Text>
+            {isSelected && (
+              <Icon name="check" style={styles.dropdownItemIconStyle} />
+            )}
           </View>
         );
       }}
@@ -108,6 +110,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 8,
+    borderBottomWidth: 0.3,
+    borderColor: 'gray',
   },
   dropdownItemTxtStyle: {
     flex: 1,

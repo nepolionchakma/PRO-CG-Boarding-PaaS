@@ -45,6 +45,7 @@ const Registration = () => {
   const [showPass1, setShowPass1] = useState(true);
   const [showPass2, setShowPass2] = useState(true);
   const [createdUserId, setCreatedUserId] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
   const navigation = useNavigation<any>();
   const toaster = useToast();
 
@@ -77,18 +78,18 @@ const Registration = () => {
     }
 
     const tokenVerify = async () => {
-      try {
-        const params = {
-          url: `${api.VerifyInvitation}?user_invitation_id=${id}&token=${tok}`,
-          baseURL: BaseURL,
-          access_token: tok,
-          // isConsole: true,
-          // isConsoleParams: true,
-        };
-        const res = await httpRequest(params, setIsLoading);
-        console.log(res, 'res');
-        setIsValidInvitation(res.valid);
-        setStatus(res.status);
+      const params = {
+        url: `${api.VerifyInvitation}?user_invitation_id=${id}&token=${tok}`,
+        baseURL: BaseURL,
+        access_token: tok,
+        // isConsole: true,
+        // isConsoleParams: true,
+      };
+      const res = await httpRequest(params, setIsLoading);
+
+      if (res?.statusCode === 200) {
+        setIsValidInvitation(res.data?.valid);
+        setStatus(res.data?.status);
         const params2 = {
           url: api.Tenants,
           baseURL: FlaskURL,
@@ -97,9 +98,9 @@ const Registration = () => {
           // isConsoleParams: true,
         };
         const res2 = await httpRequest(params2, () => {});
-        setTenants(res2);
-      } catch (error) {
-        console.log('error', error);
+        setTenants(res2.data);
+      } else {
+        setErrorMessage(res?.data?.message);
       }
     };
 
@@ -139,7 +140,8 @@ const Registration = () => {
       confirm_password: '',
     },
   });
-
+  // console.log(formState, 'formState');
+  // console.log(userSchema, 'userSchema');
   const handleGoBack = () => {
     navigation.reset({
       index: 0,
@@ -181,9 +183,9 @@ const Registration = () => {
       };
 
       const res = await httpRequest(params, setIsLoading);
-      if (res.user_id) {
-        setCreatedUserId(res.user_id);
-        toaster.show({message: res.message, type: 'success'});
+      if (res.data.user_id) {
+        setCreatedUserId(res.data.user_id);
+        toaster.show({message: res.data.message, type: 'success'});
       }
 
       // console.log(data);
@@ -196,20 +198,25 @@ const Registration = () => {
   return (
     <ContainerNew
       edges={['top', 'left', 'right']}
-      isRefresh={true}
+      isRefresh={false}
       // backgroundColor={COLORS.lightBackground}
       isScrollView={isValidInvitation ? true : false}
       header={
         <View style={styles.headerStyle}>
-          <Icon name="arrow-left" size={24} onPress={handleGoBack} />
+          <Icon
+            name="arrow-left"
+            size={24}
+            color="#000"
+            onPress={handleGoBack}
+          />
           <Text style={styles.headerText}>User Registration</Text>
         </View>
       }
       footer={
-        !isValidInvitation ? null : (
+        !isValidInvitation && isLoading ? null : (
           <View style={styles.footerStyle}>
             <CustomButtonNew
-              disabled={isLoading}
+              disabled={isLoading || formState.disabled}
               btnText="Register"
               isLoading={isLoading}
               // onBtnPress={() => {}}
@@ -228,25 +235,7 @@ const Registration = () => {
           <View>
             {!isValidInvitation ? (
               <View style={styles.isValidInvitationDiv}>
-                {status === 'EXPIRED' ? (
-                  <View
-                    style={{
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 15,
-                    }}>
-                    <LottieView
-                      source={require('../../assets/animations/InvitationExpired.json')}
-                      style={{
-                        width: '100%',
-                        height: '50%',
-                      }}
-                      autoPlay
-                      loop
-                    />
-                    <Text>The invitation has expired</Text>
-                  </View>
-                ) : status === 'ACCEPTED' ? (
+                {status === 'ACCEPTED' ? (
                   <View
                     style={{
                       alignItems: 'center',
@@ -262,11 +251,34 @@ const Registration = () => {
                       autoPlay
                       loop
                     />
-                    <Text style={{fontSize: 16, fontWeight: 'bold'}}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 'bold',
+                        color: COLORS.darkBlue,
+                      }}>
                       Invitation has already been accepted
                     </Text>
                   </View>
-                ) : null}
+                ) : (
+                  <View
+                    style={{
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 15,
+                    }}>
+                    <LottieView
+                      source={require('../../assets/animations/InvitationExpired.json')}
+                      style={{
+                        width: '100%',
+                        height: '50%',
+                      }}
+                      autoPlay
+                      loop
+                    />
+                    <Text style={{color: 'red'}}>{errorMessage}</Text>
+                  </View>
+                )}
               </View>
             ) : (
               <View style={{gap: 15, marginTop: 10}}>
@@ -275,7 +287,13 @@ const Registration = () => {
                   control={control}
                   name="user_name"
                   label="User Name"
-                  rules={{required: true}}
+                  rules={{
+                    required: 'User name is required',
+                    minLength: {
+                      value: 3,
+                      message: 'User name must be at least 3 characters',
+                    },
+                  }}
                 />
                 <SelectDropsdown
                   name="tenant_id"
@@ -397,6 +415,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 16,
     fontWeight: '500',
+    color: '#000',
   },
   footerStyle: {paddingBottom: 10, paddingHorizontal: 20},
 });
