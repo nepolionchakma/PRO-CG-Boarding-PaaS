@@ -22,7 +22,6 @@ import {useToast} from '../../common/components/CustomToast';
 import {api} from '../../common/api/api';
 import SelectDropsdown from '../../common/components/SelectDropsdown';
 import {decrypt} from '../../common/constant/decryptToken';
-import jobTitle from './Job-Titles.json';
 import LottieView from 'lottie-react-native';
 
 interface PayloadType {
@@ -46,6 +45,8 @@ const Registration = () => {
   const [showPass2, setShowPass2] = useState(true);
   const [createdUserId, setCreatedUserId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [jobTitles, setJobTitles] = useState([]);
   const navigation = useNavigation<any>();
   const toaster = useToast();
 
@@ -124,9 +125,12 @@ const Registration = () => {
       path: ['confirm_password'],
     });
 
-  const {control, handleSubmit, setValue, formState} = useForm<
-    z.infer<typeof userSchema>
-  >({
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    formState: {errors, isDirty, isValid},
+  } = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       user_name: '',
@@ -139,9 +143,22 @@ const Registration = () => {
       password: '',
       confirm_password: '',
     },
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+    shouldFocusError: true,
   });
-  // console.log(formState, 'formState');
-  // console.log(userSchema, 'userSchema');
+
+  const handleSelectedOption = (
+    name: 'job_title' | 'tenant_id',
+    value: string | number,
+  ) => {
+    console.log(name, value);
+    setValue(name, value);
+    if (name === 'tenant_id') {
+      setSelectedTenantId(value as number);
+    }
+  };
+
   const handleGoBack = () => {
     navigation.reset({
       index: 0,
@@ -195,6 +212,28 @@ const Registration = () => {
     }
   };
 
+  useEffect(() => {
+    (async () => {
+      const params = {
+        url: api.JobTitles,
+        baseURL: FlaskURL,
+        access_token: tok,
+        // isConsole: true,
+        // isConsoleParams: true,
+      };
+      const res = await httpRequest(params, () => {});
+      const jobs = res.data.filter(
+        (i: any) => i.tenant_id === selectedTenantId,
+      );
+      if (jobs.length) {
+        setJobTitles(jobs);
+      } else {
+        setValue('job_title', '');
+        setJobTitles([]);
+      }
+    })();
+  }, [selectedTenantId, setValue, tok]);
+
   return (
     <ContainerNew
       edges={['top', 'left', 'right']}
@@ -216,7 +255,7 @@ const Registration = () => {
         !isValidInvitation && isLoading ? null : (
           <View style={styles.footerStyle}>
             <CustomButtonNew
-              disabled={isLoading || formState.disabled}
+              disabled={isLoading}
               btnText="Register"
               isLoading={isLoading}
               // onBtnPress={() => {}}
@@ -287,25 +326,25 @@ const Registration = () => {
                   control={control}
                   name="user_name"
                   label="User Name"
-                  rules={{
-                    required: 'User name is required',
-                    minLength: {
-                      value: 3,
-                      message: 'User name must be at least 3 characters',
-                    },
-                  }}
+                  rules={{required: true}}
                 />
                 <SelectDropsdown
                   name="tenant_id"
                   label="Select a Tenant"
                   data={tenants}
-                  setSelectedValue={setValue}
+                  setSelectedValue={handleSelectedOption}
                 />
                 <SelectDropsdown
                   name="job_title"
-                  label="Select a Job Title"
-                  data={jobTitle}
-                  setSelectedValue={setValue}
+                  label={
+                    !selectedTenantId
+                      ? 'Select a Job Title'
+                      : selectedTenantId && jobTitles.length
+                      ? 'Select a Job Title'
+                      : 'No Job Title Found'
+                  }
+                  data={jobTitles}
+                  setSelectedValue={handleSelectedOption}
                 />
                 <CustomInputNew
                   setValue={setValue}
@@ -326,14 +365,14 @@ const Registration = () => {
                   control={control}
                   name="middle_name"
                   label="Middle Name"
-                  rules={{required: true}}
+                  rules={{required: false}}
                 />
                 <CustomInputNew
                   setValue={setValue}
                   control={control}
                   name="last_name"
                   label="Last Name"
-                  rules={{required: true}}
+                  rules={{required: false}}
                 />
                 <CustomInputNew
                   setValue={setValue}
@@ -369,7 +408,7 @@ const Registration = () => {
                     </TouchableOpacity>
                   )}
                 />
-                <Text>{formState.errors.confirm_password?.message}</Text>
+                <Text>{errors.confirm_password?.message}</Text>
                 {/* <Button title="Submit" onPress={handleSubmit(onSubmit)} /> */}
               </View>
             )}

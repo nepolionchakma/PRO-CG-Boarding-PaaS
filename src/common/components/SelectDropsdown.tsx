@@ -3,8 +3,8 @@ import SelectDropdown from 'react-native-select-dropdown';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface jobTitleProps {
-  name: string;
-  value: string;
+  job_title_id: number;
+  job_title_name: string;
 }
 interface tenantsProps {
   tenant_name: string;
@@ -26,21 +26,18 @@ const SelectDropsdown = ({
   return (
     <SelectDropdown
       data={data}
-      onSelect={(selectedItem, index) => {
-        // console.log(index, 'index');
-        setSelectedValue(name, selectedItem.value || selectedItem.tenant_id);
+      onSelect={selectedItem => {
+        if (selectedItem.job_title_name) {
+          setSelectedValue(name, selectedItem.job_title_name);
+        } else {
+          setSelectedValue(name, selectedItem.tenant_id);
+        }
       }}
       renderButton={(selectedItem, isOpened) => {
         return (
           <View style={styles.dropdownButtonStyle}>
-            {/* {selectedItem && (
-              <Icon
-                name={selectedItem.icon}
-                style={styles.dropdownButtonIconStyle}
-              />
-            )} */}
             <Text style={styles.dropdownButtonTxtStyle}>
-              {(selectedItem && selectedItem.name) ||
+              {(selectedItem && selectedItem.job_title_name) ||
                 (selectedItem && selectedItem.tenant_name) ||
                 label}
             </Text>
@@ -59,7 +56,7 @@ const SelectDropsdown = ({
               ...(isSelected && {backgroundColor: '#D2D9DF'}),
             }}>
             <Text style={styles.dropdownItemTxtStyle}>
-              {item.name || item.tenant_name}
+              {item.job_title_name || item.tenant_name}
             </Text>
             {isSelected && (
               <Icon name="check" style={styles.dropdownItemIconStyle} />
@@ -69,6 +66,7 @@ const SelectDropsdown = ({
       }}
       showsVerticalScrollIndicator={false}
       dropdownStyle={styles.dropdownMenuStyle}
+      disabled={data.length === 0}
     />
   );
 };

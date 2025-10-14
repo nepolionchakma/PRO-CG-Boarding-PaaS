@@ -3,4 +3,5 @@ export const api = {
   Users: '/users',
   VerifyInvitation: '/invitation/verify',
   Tenants: '/tenants',
+  JobTitles: '/job_titles',
 };

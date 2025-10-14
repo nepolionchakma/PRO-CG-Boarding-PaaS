@@ -1,4 +1,3 @@
-//@ts-nocheck
 import axios, {AxiosResponse, AxiosError} from 'axios';
 import {makeDecryption, makeEncryption} from './encryption';
 import {withoutEncryptionApi} from '../api/withoutEncrytApi';
