@@ -1,9 +1,14 @@
-//@ts-nocheck
-import axios, {AxiosResponse, AxiosError} from 'axios';
-import {makeDecryption, makeEncryption} from './encryption';
+// httpRequest.ts
+import axios, {
+  AxiosResponse,
+  AxiosRequestConfig,
+  AxiosHeaders,
+  AxiosError,
+} from 'axios';
+import {makeEncryption, makeDecryption} from './encryption';
 import {withoutEncryptionApi} from '../api/withoutEncrytApi';
 
-interface requestParams {
+interface RequestParams {
   url: string;
   data?: any;
   method?: string;
@@ -19,220 +24,240 @@ interface requestParams {
   access_token?: string | null;
 }
 
-// Encryption process
-axios.interceptors.request.use(
+type LoadingCallback = (state: boolean) => void;
+
+// ===============================================================
+// 🧱 AXIOS INSTANCE
+// ===============================================================
+const axiosInstance = axios.create({
+  timeout: 20000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// ===============================================================
+// 🔐 REQUEST INTERCEPTOR
+// ===============================================================
+axiosInstance.interceptors.request.use(
   async config => {
     let url = config?.url;
-    if (withoutEncryptionApi.some(element => url?.includes(element))) {
+    if (!url) {
       return config;
     }
-    let copyOfConfig = {...config};
-    const apiPrefixes = url?.includes('?');
-    if (apiPrefixes) {
-      let splitUrl = url?.split('?');
-      const encryptedData = await makeEncryption(splitUrl?.[1]);
-      url = `${splitUrl?.[0]}?${encryptedData}`;
-      copyOfConfig = {...config, url};
-    }
-    let payload = null;
-    if (config?.data) {
-      payload = await makeEncryption(JSON.stringify(config?.data));
+
+    // Skip encryption for specific endpoints
+    if (withoutEncryptionApi.some(endpoint => url.includes(endpoint))) {
+      return config;
     }
 
-    copyOfConfig = {
-      ...copyOfConfig,
-      data: payload,
-      headers: {
-        ...copyOfConfig.headers,
-        'Content-Type': 'application/json',
-      },
-    };
+    let copyOfConfig = {...config};
+
+    // 🔒 Encrypt query parameters if exist
+    if (url.includes('?')) {
+      const [base, query] = url.split('?');
+      const encryptedQuery = await makeEncryption(query);
+      if (encryptedQuery) {
+        copyOfConfig.url = `${base}?${encryptedQuery}`;
+      }
+    }
+
+    // 🔒 Encrypt payload (body)
+    if (config.data) {
+      const encryptedPayload = await makeEncryption(
+        JSON.stringify(config.data),
+      );
+      if (encryptedPayload) {
+        copyOfConfig.data = encryptedPayload;
+        const headers =
+          config.headers instanceof AxiosHeaders
+            ? config.headers
+            : AxiosHeaders.from(config.headers || {});
+        headers.set('Content-Type', 'application/json');
+        copyOfConfig.headers = headers;
+      }
+    }
 
     return copyOfConfig;
   },
-  async error => {
-    // console.log('error', JSON.stringify(error, null, 2));
-    let decryptedData = await makeDecryption(error?.response?.data);
-    let newError = {response: {data: decryptedData || ''}};
-    return Promise.reject(newError);
-  },
+  error => Promise.reject(error),
 );
 
-axios.interceptors.response.use(
-  async (response: AxiosResponse) => {
-    if (
-      withoutEncryptionApi.some(element =>
-        response?.config?.url?.includes(element),
-      )
-    ) {
+// ===============================================================
+// 🧩 RESPONSE INTERCEPTOR
+// ===============================================================
+axiosInstance.interceptors.response.use(
+  async response => {
+    const url = response?.config?.url || '';
+    if (withoutEncryptionApi.some(endpoint => url.includes(endpoint))) {
       return response;
     }
-    let decryptedData = makeDecryption(response?.data);
-    return {
-      ...response,
-      data: decryptedData,
-    };
-  },
 
-  async (error: AxiosError) => {
-    if (error?.response?.status === 401) {
-      return Promise.reject({response: {data: 401}});
-    } else if (error?.response?.status === 406) {
-      return Promise.reject({response: {data: 406}});
-    } else {
-      let decryptedError = makeDecryption(error?.response?.data);
-      let modifiedError = {response: {data: decryptedError || ''}};
-      if (
-        modifiedError?.response?.data?.message ===
-        'No authenticationScheme was specified, and there was no DefaultChallengeScheme found. The default schemes can be set using either AddAuthentication(string defaultScheme) or AddAuthentication(Action<AuthenticationOptions> configureOptions).'
-      ) {
-      } else {
-        return Promise.reject(modifiedError);
+    try {
+      const decrypted = makeDecryption(response?.data);
+      if (decrypted) {
+        return {...response, data: decrypted};
       }
+      return response;
+    } catch (error) {
+      console.error('Decryption error:', error);
+      return response;
     }
   },
+  error => Promise.reject(error),
 );
 
-export const httpRequest = async (params: requestParams, cb: any) => {
-  const cofigParam = configuration(params);
+// ===============================================================
+// 🚀 UNIVERSAL HTTP REQUEST FUNCTION
+// ===============================================================
+export const httpRequest = async (
+  params: RequestParams,
+  cb?: LoadingCallback,
+) => {
+  const configParams = configuration(params);
+  const defaultBaseURL = axiosInstance.defaults.baseURL || '';
 
-  const defualt_baseURL = axios.defaults.baseURL;
-  var config = {
-    method: cofigParam?.method || 'get',
-    baseURL: params?.isBaseURLAndURLSame
-      ? params?.url
-      : params?.baseURL || defualt_baseURL,
+  let config: AxiosRequestConfig = {
+    method: configParams.method || 'GET',
+    baseURL: params.isBaseURLAndURLSame
+      ? params.url
+      : params.baseURL || defaultBaseURL,
     headers: {
-      ...axios.defaults.headers,
-      Authorization: `Bearer ${params?.access_token}`,
-      'Content-Type': params?.mediaFile
+      Authorization: params.access_token ? `Bearer ${params.access_token}` : '',
+      'Content-Type': params.mediaFile
         ? 'multipart/form-data'
-        : axios.defaults.headers['Content-Type'],
-      ['Referer']: params?.referer || '',
+        : 'application/json',
+      Referer: params.referer || '',
     },
   };
 
-  if (params?.data || params?.mediaFile) {
-    if (cofigParam?.method?.toUpperCase() === 'GET') {
-      const processedConfig = await apiParamsProcess(params, config);
-      config = processedConfig;
+  // =========================================================
+  // 🧩 Handle Data or Media File
+  // =========================================================
+  if (params.data || params.mediaFile) {
+    const method = (configParams.method || 'GET').toUpperCase();
+
+    if (method === 'GET') {
+      config = await apiParamsProcess(params, config);
     } else {
       let formData = new FormData();
-      const file = {
-        uri: params?.mediaFile?.uri,
-        name: params?.mediaFile?.fileName || params?.mediaFile?.name,
-        type: params?.mediaFile?.type,
-      };
-      formData?.append('profileImage', file);
 
-      if (params?.mediaFile && params?.isParamsAndmediaFile) {
-        config.url = cofigParam?.url;
-        config.params = cofigParam?.data;
-        config.data = params?.mediaFile ? formData : cofigParam?.data;
-      } else if (params?.isPostOrPutWithParams) {
-        const processedConfig = await apiParamsProcess(params, config);
-        config = processedConfig;
-      } else if (params?.mediaFile) {
-        config.url = cofigParam?.url;
-        config.data = params?.mediaFile ? formData : cofigParam?.data;
+      if (params.mediaFile) {
+        const file = {
+          uri: params.mediaFile?.uri,
+          name: params.mediaFile?.fileName || params.mediaFile?.name,
+          type: params.mediaFile?.type,
+        };
+        formData.append('file', file);
+      }
+
+      if (params.mediaFile && params.isParamsAndmediaFile) {
+        config.url = configParams.url;
+        config.params = configParams.data;
+        config.data = formData;
+      } else if (params.isPostOrPutWithParams) {
+        config = await apiParamsProcess(params, config);
+      } else if (params.mediaFile) {
+        config.url = configParams.url;
+        config.data = formData;
       } else {
-        config.url = cofigParam?.url;
-        config.data = cofigParam?.data;
-        const encrypt = await makeEncryption(JSON.stringify(cofigParam?.data));
-        params?.isEncrypted &&
-          console.log(
-            `Encypted_Payload for==> ${
-              params?.isBaseURLAndURLSame
-                ? params?.url
-                : params?.baseURL || defualt_baseURL
-            }${params?.url}==>`,
-            encrypt,
-          );
+        config.url = configParams.url;
+        config.data = configParams.data;
       }
     }
   } else {
-    config = {
-      url: params?.url,
-      ...config,
-    };
+    config.url = params.url;
   }
 
+  // =========================================================
+  // 📡 API Execution
+  // =========================================================
   try {
-    cb(true);
-    params?.isConsoleParams &&
-      console.log('api_params/payload ==>', JSON.stringify(config, null, 2));
-
-    const response = await axios(config);
-
-    cb(false);
-    params?.isConsole &&
-      console.log('api_response ==>', JSON.stringify(response?.data, null, 2));
-
-    if (response?.data === 0 || response?.data) {
-      return response?.data;
-    } else {
-      return response;
+    cb?.(true);
+    if (params.isConsoleParams) {
+      console.log('🔍 API Config =>', JSON.stringify(config, null, 2));
     }
-  } catch (error) {
-    if (error instanceof AxiosError) {
-      cb(false);
-      params?.isConsole &&
-        console.log('error_response ==>', JSON.stringify(error, null, 2));
-      // params?.isConsole &&
-      //   console.log(
-      //     'error_response_data ==>',
-      //     JSON.stringify(error?.data, null, 2),
-      //   );
-      return error?.response?.data;
+
+    const response: AxiosResponse = await axiosInstance(config);
+
+    cb?.(false);
+    if (params.isConsole) {
+      console.log('✅ API Response =>', JSON.stringify(response.data, null, 2));
     }
+
+    return {
+      status: response.status,
+      success: response.status >= 200 && response.status < 300,
+      data: response.data,
+    };
+  } catch (error: any) {
+    cb?.(false);
+    const err = error as AxiosError;
+
+    if (params.isConsole) {
+      console.error(
+        '❌ API Error =>',
+        JSON.stringify(err.response?.data, null, 2),
+      );
+    }
+
+    return {
+      status: err.response?.status || 500,
+      success: false,
+      data: err.response?.data || err.message,
+    };
   }
 };
 
+// ===============================================================
+// 🧮 Helper: Handle GET Params
+// ===============================================================
 const apiParamsProcess = async (params: any, config: any) => {
+  const configParams = configuration(params);
+  const queryString = new URLSearchParams(configParams.data).toString();
   let processedConfig = {};
-  const cofigParam = configuration(params);
-  let modifiedParam = '';
-  for (const [key, value] of Object.entries(cofigParam?.data)) {
-    modifiedParam += `${key}=${value}&`;
-  }
+
   if (
-    withoutEncryptionApi.some(element => cofigParam?.url?.includes(element))
+    withoutEncryptionApi.some(endpoint => configParams.url.includes(endpoint))
   ) {
     processedConfig = {
-      url: cofigParam?.url,
-      params: cofigParam?.data,
+      url: configParams.url,
+      params: configParams.data,
       ...config,
     };
   } else {
-    if (params?.isEncrypted) {
-      const encrypt = await makeEncryption(`${modifiedParam?.slice(0, -1)}`);
-      console.log(
-        `Encypted_Params for==> ${
-          params?.isBaseURLAndURLSame
-            ? params?.url
-            : params?.baseURL || axios.defaults.baseURL
-        }${params?.url}?${encrypt}`,
-      );
+    if (params.isEncrypted) {
+      const encrypted = await makeEncryption(queryString);
+      console.log(`🔐 Encrypted Params for ${configParams.url}?${encrypted}`);
+      processedConfig = {
+        url: `${configParams.url}?${encrypted}`,
+        ...config,
+      };
+    } else {
+      processedConfig = {
+        url: `${configParams.url}?${queryString}`,
+        ...config,
+      };
     }
-    processedConfig = {
-      url: `${cofigParam?.url}?${modifiedParam?.slice(0, -1)}`,
-      ...config,
-    };
   }
+
   return processedConfig;
 };
 
+// ===============================================================
+// ⚙️ Helper: Configuration
+// ===============================================================
 const configuration = (param: any) => {
-  if (param?.url && (param?.data || param?.mediaFile) && param?.method) {
+  if (param.url && (param.data || param.mediaFile) && param.method) {
     return {
-      url: param?.url,
-      data: param?.data,
-      method: param?.method,
+      url: param.url,
+      data: param.data,
+      method: param.method,
     };
   } else {
     return {
-      url: param?.url,
-      method: param?.method || 'get',
+      url: param.url,
+      method: param.method || 'GET',
     };
   }
 };

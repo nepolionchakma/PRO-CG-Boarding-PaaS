@@ -22,7 +22,6 @@ import {useToast} from '../../common/components/CustomToast';
 import {api} from '../../common/api/api';
 import SelectDropsdown from '../../common/components/SelectDropsdown';
 import {decrypt} from '../../common/constant/decryptToken';
-import jobTitle from './Job-Titles.json';
 import LottieView from 'lottie-react-native';
 
 interface PayloadType {
@@ -39,12 +38,17 @@ const Registration = () => {
   const route = useRoute<any>();
   const {user_invitation_id, token} = route.params || {};
   const [isLoading, setIsLoading] = useState(false);
-  const [isValidInvitation, setIsValidInvitation] = useState(null);
+  const [isValidInvitation, setIsValidInvitation] = useState<boolean | null>(
+    null,
+  );
   const [tenants, setTenants] = useState([]);
   const [status, setStatus] = useState('');
   const [showPass1, setShowPass1] = useState(true);
   const [showPass2, setShowPass2] = useState(true);
   const [createdUserId, setCreatedUserId] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [jobTitles, setJobTitles] = useState([]);
   const navigation = useNavigation<any>();
   const toaster = useToast();
 
@@ -77,29 +81,32 @@ const Registration = () => {
     }
 
     const tokenVerify = async () => {
-      try {
-        const params = {
-          url: `${api.VerifyInvitation}?user_invitation_id=${id}&token=${tok}`,
-          baseURL: BaseURL,
-          access_token: tok,
-          // isConsole: true,
-          // isConsoleParams: true,
-        };
-        const res = await httpRequest(params, setIsLoading);
-        console.log(res, 'res');
-        setIsValidInvitation(res.valid);
-        setStatus(res.status);
+      const params = {
+        url: `${api.VerifyInvitation}?user_invitation_id=${id}&token=${tok}`,
+        baseURL: BaseURL,
+        access_token: tok,
+        isEncrypted: true,
+        // isConsole: true,
+        // isConsoleParams: true,
+      };
+      const res = await httpRequest(params, setIsLoading);
+
+      if (res.success) {
+        setIsValidInvitation(res?.data?.valid);
+        setStatus(res?.data?.status);
         const params2 = {
           url: api.Tenants,
           baseURL: FlaskURL,
           access_token: tok,
+          // isEncrypted: true,
           // isConsole: true,
           // isConsoleParams: true,
         };
         const res2 = await httpRequest(params2, () => {});
-        setTenants(res2);
-      } catch (error) {
-        console.log('error', error);
+        setTenants(res2?.data);
+      } else {
+        setErrorMessage(res?.data?.message || '');
+        setIsValidInvitation(res?.success);
       }
     };
 
@@ -113,8 +120,8 @@ const Registration = () => {
       tenant_id: z.union([z.string(), z.number()]),
       first_name: z.string().min(3, 'First name must be at least 3 characters'),
       middle_name: z.string().optional(),
-      last_name: z.string().optional(),
-      job_title: z.string().min(3, 'Job title must be at least 3 characters'),
+      last_name: z.string().min(3, 'Last name must be at least 3 characters'),
+      job_title: z.string(),
       password: z.string().min(8, 'Password must be at least 8 characters'),
       confirm_password: z.string(),
     })
@@ -123,9 +130,12 @@ const Registration = () => {
       path: ['confirm_password'],
     });
 
-  const {control, handleSubmit, setValue, formState} = useForm<
-    z.infer<typeof userSchema>
-  >({
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    formState: {errors},
+  } = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       user_name: '',
@@ -138,7 +148,21 @@ const Registration = () => {
       password: '',
       confirm_password: '',
     },
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+    shouldFocusError: true,
   });
+
+  const handleSelectedOption = (
+    name: 'job_title' | 'tenant_id',
+    value: string | number,
+  ) => {
+    // console.log(name, value);
+    setValue(name, value);
+    if (name === 'tenant_id') {
+      setSelectedTenantId(value as number);
+    }
+  };
 
   const handleGoBack = () => {
     navigation.reset({
@@ -150,63 +174,83 @@ const Registration = () => {
       ],
     });
   };
-  const onSubmit = async (data: PayloadType, e: any) => {
-    e.preventDefault();
-    // if (!isValid) {
-    //   toaster.show({message: 'Please correct the errors', type: 'error'});
-    //   return;
-    // }
-    try {
-      const postData = {
-        user_name: data.user_name,
-        user_type: 'person',
-        email_address: data.email,
-        tenant_id: Number(data.tenant_id),
-        first_name: data.first_name,
-        middle_name: data.middle_name,
-        last_name: data.last_name,
-        job_title: data.job_title,
-        password: data.password,
-        user_invitation_id: id,
-      };
+  const onSubmit = async (data: PayloadType) => {
+    const postData = {
+      user_name: data.user_name,
+      user_type: 'person',
+      email_address: data.email,
+      tenant_id: Number(data.tenant_id),
+      first_name: data.first_name,
+      middle_name: data.middle_name,
+      last_name: data.last_name,
+      job_title: data.job_title,
+      password: data.password,
+      user_invitation_id: id,
+    };
+    const params = {
+      url: api.Users,
+      baseURL: FlaskURL,
+      access_token: tok,
+      data: postData,
+      method: 'POST',
+      // isEncrypted: true,
+      // isConsole: true,
+      // isConsoleParams: true,
+    };
+
+    const res = await httpRequest(params, setIsLoading);
+    if (res?.success) {
+      setCreatedUserId(res?.data?.user_id);
+      toaster.show({message: res?.data?.message, type: 'success'});
+    } else {
+      toaster.show({message: res?.data?.message, type: 'error'});
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
       const params = {
-        url: api.Users,
+        url: api.JobTitles,
         baseURL: FlaskURL,
         access_token: tok,
-        data: postData,
         // isEncrypted: true,
-        method: 'POST',
         // isConsole: true,
         // isConsoleParams: true,
       };
-
-      const res = await httpRequest(params, setIsLoading);
-      if (res.user_id) {
-        setCreatedUserId(res.user_id);
-        toaster.show({message: res.message, type: 'success'});
+      const res = await httpRequest(params, () => {});
+      if (res.success) {
+        const jobs = res?.data?.filter(
+          (jb: any) => jb.tenant_id === selectedTenantId,
+        );
+        if (jobs.length) {
+          setJobTitles(jobs);
+        } else {
+          setValue('job_title', '');
+          setJobTitles([]);
+        }
       }
-
-      // console.log(data);
-    } catch (error) {
-      setCreatedUserId(null);
-      console.log(error, 'errors');
-    }
-  };
+    })();
+  }, [selectedTenantId, setValue, tok]);
 
   return (
     <ContainerNew
       edges={['top', 'left', 'right']}
-      isRefresh={true}
+      isRefresh={false}
       // backgroundColor={COLORS.lightBackground}
       isScrollView={isValidInvitation ? true : false}
       header={
         <View style={styles.headerStyle}>
-          <Icon name="arrow-left" size={24} onPress={handleGoBack} />
+          <Icon
+            name="arrow-left"
+            size={24}
+            color="#000"
+            onPress={handleGoBack}
+          />
           <Text style={styles.headerText}>User Registration</Text>
         </View>
       }
       footer={
-        !isValidInvitation ? null : (
+        !isValidInvitation || isLoading ? null : (
           <View style={styles.footerStyle}>
             <CustomButtonNew
               disabled={isLoading}
@@ -228,25 +272,7 @@ const Registration = () => {
           <View>
             {!isValidInvitation ? (
               <View style={styles.isValidInvitationDiv}>
-                {status === 'EXPIRED' ? (
-                  <View
-                    style={{
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 15,
-                    }}>
-                    <LottieView
-                      source={require('../../assets/animations/InvitationExpired.json')}
-                      style={{
-                        width: '100%',
-                        height: '50%',
-                      }}
-                      autoPlay
-                      loop
-                    />
-                    <Text>The invitation has expired</Text>
-                  </View>
-                ) : status === 'ACCEPTED' ? (
+                {status === 'ACCEPTED' ? (
                   <View
                     style={{
                       alignItems: 'center',
@@ -262,11 +288,34 @@ const Registration = () => {
                       autoPlay
                       loop
                     />
-                    <Text style={{fontSize: 16, fontWeight: 'bold'}}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 'bold',
+                        color: COLORS.darkBlue,
+                      }}>
                       Invitation has already been accepted
                     </Text>
                   </View>
-                ) : null}
+                ) : (
+                  <View
+                    style={{
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 15,
+                    }}>
+                    <LottieView
+                      source={require('../../assets/animations/InvitationExpired.json')}
+                      style={{
+                        width: '100%',
+                        height: '50%',
+                      }}
+                      autoPlay
+                      loop
+                    />
+                    <Text style={{color: 'red'}}>{errorMessage}</Text>
+                  </View>
+                )}
               </View>
             ) : (
               <View style={{gap: 15, marginTop: 10}}>
@@ -281,13 +330,19 @@ const Registration = () => {
                   name="tenant_id"
                   label="Select a Tenant"
                   data={tenants}
-                  setSelectedValue={setValue}
+                  setSelectedValue={handleSelectedOption}
                 />
                 <SelectDropsdown
                   name="job_title"
-                  label="Select a Job Title"
-                  data={jobTitle}
-                  setSelectedValue={setValue}
+                  label={
+                    !selectedTenantId
+                      ? 'Select a Job Title'
+                      : selectedTenantId && jobTitles.length
+                      ? 'Select a Job Title'
+                      : 'No Job Title Found'
+                  }
+                  data={jobTitles}
+                  setSelectedValue={handleSelectedOption}
                 />
                 <CustomInputNew
                   setValue={setValue}
@@ -308,14 +363,14 @@ const Registration = () => {
                   control={control}
                   name="middle_name"
                   label="Middle Name"
-                  rules={{required: true}}
+                  rules={{required: false}}
                 />
                 <CustomInputNew
                   setValue={setValue}
                   control={control}
                   name="last_name"
                   label="Last Name"
-                  rules={{required: true}}
+                  rules={{required: false}}
                 />
                 <CustomInputNew
                   setValue={setValue}
@@ -351,7 +406,7 @@ const Registration = () => {
                     </TouchableOpacity>
                   )}
                 />
-                <Text>{formState.errors.confirm_password?.message}</Text>
+                <Text>{errors.confirm_password?.message}</Text>
                 {/* <Button title="Submit" onPress={handleSubmit(onSubmit)} /> */}
               </View>
             )}
@@ -397,6 +452,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 16,
     fontWeight: '500',
+    color: '#000',
   },
   footerStyle: {paddingBottom: 10, paddingHorizontal: 20},
 });

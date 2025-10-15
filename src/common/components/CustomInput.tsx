@@ -1,6 +1,13 @@
 import React, {Fragment} from 'react';
 import {Controller} from 'react-hook-form';
-import {Platform, StyleSheet, Text, TextInput, View} from 'react-native';
+import {
+  KeyboardTypeOptions,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {COLORS, SIZES} from '../constant/Themes';
 
 interface Props {
@@ -14,7 +21,7 @@ interface Props {
   multiline?: boolean;
   rightIcon?: () => JSX.Element;
   leftIcon?: () => JSX.Element;
-  keyboardType?: string;
+  keyboardType?: KeyboardTypeOptions;
   inputMainStyle?: {};
   labelStyle?: {};
   textInputStyle?: {};
@@ -102,7 +109,6 @@ Props) => {
                       value={value}
                       secureTextEntry={secureTextEntry}
                       multiline={multiline}
-                      //@ts-ignore
                       keyboardType={keyboardType}
                       placeholderTextColor={COLORS.graySubText}
                     />
