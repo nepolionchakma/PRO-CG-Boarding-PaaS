@@ -15,9 +15,7 @@ import ContainerNew from '../../common/components/ContainerNew';
 import CustomButtonNew from '../../common/components/CustomButton';
 import {COLORS} from '../../common/constant/Themes';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import * as z from 'zod';
 import {useForm} from 'react-hook-form';
-import {zodResolver} from '@hookform/resolvers/zod';
 import {useToast} from '../../common/components/CustomToast';
 import {api} from '../../common/api/api';
 import SelectDropsdown from '../../common/components/SelectDropsdown';
@@ -47,7 +45,7 @@ const Registration = () => {
   const [showPass2, setShowPass2] = useState(true);
   const [createdUserId, setCreatedUserId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [jobTitles, setJobTitles] = useState([]);
   const navigation = useNavigation<any>();
   const toaster = useToast();
@@ -113,30 +111,7 @@ const Registration = () => {
     tokenVerify();
   }, [id, tok, createdUserId]);
 
-  const userSchema = z
-    .object({
-      user_name: z.string().min(3, 'User name must be at least 3 characters'),
-      email: z.string().email('Invalid email'),
-      tenant_id: z.union([z.string(), z.number()]),
-      first_name: z.string().min(3, 'First name must be at least 3 characters'),
-      middle_name: z.string().optional(),
-      last_name: z.string().min(3, 'Last name must be at least 3 characters'),
-      job_title: z.string(),
-      password: z.string().min(8, 'Password must be at least 8 characters'),
-      confirm_password: z.string(),
-    })
-    .refine(data => data.password === data.confirm_password, {
-      message: 'Passwords do not match',
-      path: ['confirm_password'],
-    });
-
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    formState: {errors},
-  } = useForm<z.infer<typeof userSchema>>({
-    resolver: zodResolver(userSchema),
+  const {control, handleSubmit, setValue, getValues} = useForm({
     defaultValues: {
       user_name: '',
       email: '',
@@ -148,19 +123,16 @@ const Registration = () => {
       password: '',
       confirm_password: '',
     },
-    mode: 'onChange',
-    reValidateMode: 'onChange',
-    shouldFocusError: true,
   });
 
   const handleSelectedOption = (
     name: 'job_title' | 'tenant_id',
-    value: string | number,
+    value: string,
   ) => {
     // console.log(name, value);
     setValue(name, value);
     if (name === 'tenant_id') {
-      setSelectedTenantId(value as number);
+      setSelectedTenantId(value);
     }
   };
 
@@ -193,9 +165,6 @@ const Registration = () => {
       access_token: tok,
       data: postData,
       method: 'POST',
-      // isEncrypted: true,
-      // isConsole: true,
-      // isConsoleParams: true,
     };
 
     const res = await httpRequest(params, setIsLoading);
@@ -209,8 +178,11 @@ const Registration = () => {
 
   useEffect(() => {
     (async () => {
+      if (!selectedTenantId) {
+        return;
+      }
       const params = {
-        url: api.JobTitles,
+        url: `${api.JobTitles}?tenant_id=${selectedTenantId}`,
         baseURL: FlaskURL,
         access_token: tok,
         // isEncrypted: true,
@@ -218,16 +190,11 @@ const Registration = () => {
         // isConsoleParams: true,
       };
       const res = await httpRequest(params, () => {});
+
       if (res.success) {
-        const jobs = res?.data?.filter(
-          (jb: any) => jb.tenant_id === selectedTenantId,
-        );
-        if (jobs.length) {
-          setJobTitles(jobs);
-        } else {
-          setValue('job_title', '');
-          setJobTitles([]);
-        }
+        setJobTitles(res?.data);
+      } else {
+        setJobTitles([]);
       }
     })();
   }, [selectedTenantId, setValue, tok]);
@@ -324,7 +291,18 @@ const Registration = () => {
                   control={control}
                   name="user_name"
                   label="User Name"
-                  rules={{required: true}}
+                  rules={{
+                    required: 'User name is required',
+                    pattern: {
+                      value: /^[a-zA-Z0-9_]+$/,
+                      message:
+                        'User name must contain only letters, numbers, and underscores',
+                    },
+                    minLength: {
+                      value: 3,
+                      message: 'User name must be at least 3 characters long',
+                    },
+                  }}
                 />
                 <SelectDropsdown
                   name="tenant_id"
@@ -349,14 +327,26 @@ const Registration = () => {
                   control={control}
                   name="email"
                   label="Enter your email"
-                  rules={{required: true}}
+                  rules={{
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: 'Invalid email address',
+                    },
+                  }}
                 />
                 <CustomInputNew
                   setValue={setValue}
                   control={control}
                   name="first_name"
                   label="First Name"
-                  rules={{required: true}}
+                  rules={{
+                    required: 'First name is required',
+                    minLength: {
+                      value: 3,
+                      message: 'First name must be at least 3 characters long',
+                    },
+                  }}
                 />
                 <CustomInputNew
                   setValue={setValue}
@@ -370,7 +360,13 @@ const Registration = () => {
                   control={control}
                   name="last_name"
                   label="Last Name"
-                  rules={{required: false}}
+                  rules={{
+                    required: 'Last name is required',
+                    minLength: {
+                      value: 3,
+                      message: 'Last name must be at least 3 characters long',
+                    },
+                  }}
                 />
                 <CustomInputNew
                   setValue={setValue}
@@ -378,7 +374,13 @@ const Registration = () => {
                   secureTextEntry={showPass1}
                   name="password"
                   label="Password"
-                  rules={{required: true}}
+                  rules={{
+                    required: 'Password is required',
+                    minLength: {
+                      value: 8,
+                      message: 'Password must be at least 8 characters long',
+                    },
+                  }}
                   rightIcon={() => (
                     <TouchableOpacity onPress={() => setShowPass1(!showPass1)}>
                       <Icon
@@ -395,7 +397,22 @@ const Registration = () => {
                   secureTextEntry={showPass2}
                   name="confirm_password"
                   label="Confirm Password"
-                  rules={{required: true}}
+                  rules={{
+                    required: 'Confirm password is required',
+                    minLength: {
+                      value: 8,
+                      message:
+                        'Confirm password must be at least 8 characters long',
+                    },
+                    validate: {
+                      value: (value: string) => {
+                        return (
+                          value === getValues('password') ||
+                          'Passwords do not match'
+                        );
+                      },
+                    },
+                  }}
                   rightIcon={() => (
                     <TouchableOpacity onPress={() => setShowPass2(!showPass2)}>
                       <Icon
@@ -406,8 +423,6 @@ const Registration = () => {
                     </TouchableOpacity>
                   )}
                 />
-                <Text>{errors.confirm_password?.message}</Text>
-                {/* <Button title="Submit" onPress={handleSubmit(onSubmit)} /> */}
               </View>
             )}
           </View>

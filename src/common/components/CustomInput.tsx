@@ -9,11 +9,23 @@ import {
   View,
 } from 'react-native';
 import {COLORS, SIZES} from '../constant/Themes';
+interface ValidationRules {
+  required?: boolean | string | {value: boolean; message: string};
+  pattern?: {value: RegExp; message: string}; // Correcting this line
+  minLength?: {value: number; message: string};
+  maxLength?: {value: number; message: string};
+  min?: {value: number; message: string};
+  max?: {value: number; message: string};
+  validate?: {[key: string]: (value: any) => boolean | string};
+  valueAsNumber?: boolean;
+  valueAsDate?: boolean;
+  disabled?: boolean;
+}
 
 interface Props {
   control: any;
   name: any;
-  rules?: {};
+  rules?: ValidationRules;
   placeholder?: string;
   secureTextEntry?: boolean;
   label?: string;
@@ -35,7 +47,7 @@ interface Props {
 const CustomInputNew = ({
   control,
   name,
-  rules = {},
+  rules,
   placeholder,
   secureTextEntry = false,
   label,
@@ -67,7 +79,7 @@ Props) => {
         control={control}
         rules={rules}
         render={({field: {value, onBlur}, fieldState: {error}}) => {
-          // console.log(value, 'value', error, 'error');
+          console.log(error, 'error');
           return (
             <>
               <View>
@@ -119,9 +131,8 @@ Props) => {
                     {rightIcon && rightIcon()}
                   </View>
                 ) : null}
+                {error && <Text style={styles.error}>{error.message}</Text>}
               </View>
-
-              {error && <Text style={styles.error}>{error.message}</Text>}
             </>
           );
         }}
@@ -150,9 +161,8 @@ const styles = StyleSheet.create({
   },
   error: {
     color: 'red',
-    fontSize: 10,
-    marginTop: -18,
-    marginBottom: 10,
+    fontSize: 12,
+    marginLeft: 16,
   },
 
   newInput: {
