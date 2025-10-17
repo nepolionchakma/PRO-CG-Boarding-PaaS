@@ -54,13 +54,16 @@ axiosInstance.interceptors.request.use(
     let copyOfConfig = {...config};
 
     // 🔒 Encrypt query parameters if exist
-    if (url.includes('?')) {
-      const [base, query] = url.split('?');
-      const encryptedQuery = await makeEncryption(query);
-      if (encryptedQuery) {
-        copyOfConfig.url = `${base}?${encryptedQuery}`;
-      }
-    }
+    // if (url.includes('?')) {
+    //   const [base, query] = url.split('?');
+    //   const encryptedQuery = await makeEncryption(query);
+    //   if (encryptedQuery) {
+    //     copyOfConfig.url = `${base}?${encryptedQuery}`;
+    //   }
+    // }
+    // 🔒 Encrypt query parameters if exist
+    // NOTE: Do not auto-encrypt query strings here.
+    // Query encryption is handled in apiParamsProcess() when params.isEncrypted is set.
 
     // 🔒 Encrypt payload (body)
     if (config.data) {
@@ -261,3 +264,25 @@ const configuration = (param: any) => {
     };
   }
 };
+
+// export const buildUrlWithQuery = (
+//   url: string,
+//   query?: Record<string, any>,
+// ): string => {
+//   if (!query || Object.keys(query).length === 0) return url;
+//   const [base, existing] = url.split('?');
+//   const search = new URLSearchParams(existing || '');
+//   for (const [key, value] of Object.entries(query)) {
+//     if (value === undefined || value === null) continue;
+//     if (Array.isArray(value)) {
+//       search.delete(key);
+//       for (const item of value) {
+//         search.append(key, String(item));
+//       }
+//     } else {
+//       search.set(key, String(value));
+//     }
+//   }
+//   const qs = search.toString();
+//   return qs ? `${base}?${qs}` : base;
+// };
