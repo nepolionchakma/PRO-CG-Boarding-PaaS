@@ -11,7 +11,7 @@ import {
 import {COLORS, SIZES} from '../constant/Themes';
 interface ValidationRules {
   required?: boolean | string | {value: boolean; message: string};
-  pattern?: {value: RegExp; message: string}; // Correcting this line
+  pattern?: {value: RegExp; message: string};
   minLength?: {value: number; message: string};
   maxLength?: {value: number; message: string};
   min?: {value: number; message: string};
@@ -88,7 +88,7 @@ Props) => {
                     {value ? (
                       <View>
                         <Text style={[styles.newLabelIOS, labelStyle]}>
-                          {label}
+                          {label}ss
                         </Text>
                       </View>
                     ) : null}
@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     marginLeft: 16,
     backgroundColor: 'white',
+    paddingHorizontal: 4,
   },
   error: {
     color: 'red',

@@ -18,9 +18,9 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useForm} from 'react-hook-form';
 import {useToast} from '../../common/components/CustomToast';
 import {api} from '../../common/api/api';
-import SelectDropsdown from '../../common/components/SelectDropsdown';
 import {decrypt} from '../../common/constant/decryptToken';
 import LottieView from 'lottie-react-native';
+import SelectDropdownWithForm from '../../common/components/SelectDropdownWithForm';
 
 interface PayloadType {
   user_name: string;
@@ -199,6 +199,12 @@ const Registration = () => {
     })();
   }, [selectedTenantId, setValue, tok]);
 
+  useEffect(() => {
+    if (jobTitles.length === 0) {
+      setValue('job_title', '');
+    }
+  }, [jobTitles, setValue]);
+  console.log(jobTitles.length, 'jobTitles.length');
   return (
     <ContainerNew
       edges={['top', 'left', 'right']}
@@ -304,13 +310,17 @@ const Registration = () => {
                     },
                   }}
                 />
-                <SelectDropsdown
+                <SelectDropdownWithForm
+                  control={control}
                   name="tenant_id"
                   label="Select a Tenant"
                   data={tenants}
                   setSelectedValue={handleSelectedOption}
+                  rules={{required: 'Tenant is required'}}
+                  placeholder="Select a Tenant"
                 />
-                <SelectDropsdown
+                <SelectDropdownWithForm
+                  control={control}
                   name="job_title"
                   label={
                     !selectedTenantId
@@ -321,6 +331,14 @@ const Registration = () => {
                   }
                   data={jobTitles}
                   setSelectedValue={handleSelectedOption}
+                  rules={{required: 'Job Title is required'}}
+                  placeholder={
+                    !selectedTenantId
+                      ? 'Select a Job Title'
+                      : selectedTenantId && jobTitles.length
+                      ? 'Select a Job Title'
+                      : 'No Job Title Found'
+                  }
                 />
                 <CustomInputNew
                   setValue={setValue}

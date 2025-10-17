@@ -1,113 +1,116 @@
-// import React, {StyleSheet, Text, View} from 'react-native';
-// import SelectDropdown from 'react-native-select-dropdown';
-// import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-// import {Controller} from 'react-hook-form';
-// import {KeyboardTypeOptions, Platform} from 'react-native';
+import React, {Fragment} from 'react';
+import {View} from 'react-native';
+import {Controller} from 'react-hook-form';
+import {KeyboardTypeOptions} from 'react-native';
 // import {COLORS} from '../constant/Themes';
-// import {Fragment} from 'react';
+import SelectDropdown from './SelectDropdown';
+interface ValidationRules {
+  required?: boolean | string | {value: boolean; message: string};
+  pattern?: {value: RegExp; message: string};
+  minLength?: {value: number; message: string};
+  maxLength?: {value: number; message: string};
+  min?: {value: number; message: string};
+  max?: {value: number; message: string};
+  validate?: {[key: string]: (value: any) => boolean | string};
+  valueAsNumber?: boolean;
+  valueAsDate?: boolean;
+  disabled?: boolean;
+}
+interface Props {
+  control: any;
+  name: any;
+  rules?: ValidationRules;
+  placeholder?: string;
+  secureTextEntry?: boolean;
+  label?: string;
+  disabled?: boolean;
+  multiline?: boolean;
+  rightIcon?: () => JSX.Element;
+  leftIcon?: () => JSX.Element;
+  keyboardType?: KeyboardTypeOptions;
+  inputMainStyle?: {};
+  labelStyle?: {};
+  textInputStyle?: {};
+  setValue?: any;
+  isAuth?: boolean;
+  onChange?: any;
+  selectionColor?: string;
+  isImportant?: boolean;
+  data: jobTitleProps[] | tenantsProps[];
+  setSelectedValue: (name: nameType, value: string) => void;
+}
 
-// interface Props {
-//   control: any;
-//   name: any;
-//   rules?: {};
-//   placeholder?: string;
-//   secureTextEntry?: boolean;
-//   label?: string;
-//   disabled?: boolean;
-//   multiline?: boolean;
-//   rightIcon?: () => JSX.Element;
-//   leftIcon?: () => JSX.Element;
-//   keyboardType?: KeyboardTypeOptions;
-//   inputMainStyle?: {};
-//   labelStyle?: {};
-//   textInputStyle?: {};
-//   setValue?: any;
-//   isAuth?: boolean;
-//   onChange?: any;
-//   selectionColor?: string;
-//   isImportant?: boolean;
-//   data: jobTitleProps[] | tenantsProps[];
-//   setSelectedValue: (name: nameType, value: string) => void;
-// }
+interface jobTitleProps {
+  job_title_id: number;
+  job_title_name: string;
+}
+interface tenantsProps {
+  tenant_name: string;
+  tenant_id: string;
+}
+type nameType = 'tenant_id' | 'job_title';
+const SelectDropdownWithForm = ({
+  control,
+  name,
+  rules,
+  label,
+  data,
+  setSelectedValue,
+  placeholder,
+}: Props) => {
+  return (
+    <Fragment>
+      <Controller
+        name={name}
+        control={control}
+        rules={rules}
+        render={({field: {value, onChange}, fieldState: {error}}) => {
+          const items = Array.isArray(data)
+            ? data.map((item: any) => {
+                if (typeof item?.job_title_id !== 'undefined') {
+                  return {
+                    label: String(item.job_title_name),
+                    value: String(item.job_title_id),
+                  };
+                }
+                if (typeof item?.tenant_id !== 'undefined') {
+                  return {
+                    label: String(item.tenant_name),
+                    value: String(item.tenant_id),
+                  };
+                }
+                return {
+                  label: String(item?.label ?? ''),
+                  value: String(item?.value ?? ''),
+                };
+              })
+            : [];
 
-// interface jobTitleProps {
-//   job_title_id: number;
-//   job_title_name: string;
-// }
-// interface tenantsProps {
-//   tenant_name: string;
-//   tenant_id: string;
-// }
-// type nameType = 'tenant_id' | 'job_title';
-// const SelectDropdownWithForm = ({
-//   control,
-//   name,
-//   rules = {},
-//   label,
-//   data,
-//   setSelectedValue,
-// }: Props) => {
-//   return (
-//     <Fragment>
-//       <Controller
-//         name={name}
-//         control={control}
-//         rules={rules}
-//         render={() => {
-//           // console.log(value, 'value', error, 'error');
-//           return (
-//             <SelectDropdown
-//               data={data}
-//               onSelect={selectedItem => {
-//                 if (selectedItem.job_title_name) {
-//                   setSelectedValue(name, selectedItem.job_title_name);
-//                 } else {
-//                   setSelectedValue(name, selectedItem.tenant_id);
-//                 }
-//               }}
-//               renderButton={(selectedItem, isOpened) => {
-//                 return (
-//                   <View style={styles.dropdownButtonStyle}>
-//                     <Text style={styles.dropdownButtonTxtStyle}>
-//                       {(selectedItem && selectedItem.job_title_name) ||
-//                         (selectedItem && selectedItem.tenant_name) ||
-//                         label}
-//                     </Text>
-//                     <Icon
-//                       name={isOpened ? 'chevron-up' : 'chevron-down'}
-//                       style={styles.dropdownButtonArrowStyle}
-//                     />
-//                   </View>
-//                 );
-//               }}
-//               renderItem={(item, index, isSelected) => {
-//                 return (
-//                   <View
-//                     style={{
-//                       ...styles.dropdownItemStyle,
-//                       ...(isSelected && {backgroundColor: '#D2D9DF'}),
-//                     }}>
-//                     <Text style={styles.dropdownItemTxtStyle}>
-//                       {item.job_title_name || item.tenant_name}
-//                     </Text>
-//                     {isSelected && (
-//                       <Icon name="check" style={styles.dropdownItemIconStyle} />
-//                     )}
-//                   </View>
-//                 );
-//               }}
-//               showsVerticalScrollIndicator={false}
-//               dropdownStyle={styles.dropdownMenuStyle}
-//               disabled={data.length === 0}
-//             />
-//           );
-//         }}
-//       />
-//     </Fragment>
-//   );
-// };
+          const handleChange = (val: string) => {
+            onChange(val);
+            setSelectedValue(name as nameType, val);
+          };
 
-// export default SelectDropdownWithForm;
+          return (
+            <View>
+              <SelectDropdown
+                items={items}
+                value={value}
+                onChange={handleChange}
+                label={label}
+                error={error?.message}
+                disabled={items.length === 0}
+                placeholder={placeholder}
+              />
+            </View>
+          );
+        }}
+      />
+    </Fragment>
+  );
+};
+
+export default SelectDropdownWithForm;
 
 // const styles = StyleSheet.create({
 //   newLabel: {
